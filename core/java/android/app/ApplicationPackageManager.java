@@ -920,7 +920,8 @@ public class ApplicationPackageManager extends PackageManager {
         }
 
         String packageName = ActivityThread.currentPackageName();
-        boolean isPhotosSpoofEnabled = SystemProperties.getBoolean("persist.sys.pp.photos", true);
+        boolean isPhotosSpoofEnabled = !Process.isIsolated()
+                && SystemProperties.getBoolean("persist.sys.pp.photos", true);
         if (packageName != null
                 && (packageName.equals("com.google.android.googlequicksearchbox")
                 || packageName.equals("com.google.android.apps.pixel.agent")
