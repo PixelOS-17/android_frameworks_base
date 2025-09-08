@@ -920,7 +920,8 @@ public class ApplicationPackageManager extends PackageManager {
         }
 
         String packageName = ActivityThread.currentPackageName();
-        boolean isPhotosSpoofEnabled = SystemProperties.getBoolean("persist.sys.pp.photos", true);
+        boolean isPhotosSpoofEnabled = !Process.isIsolated()
+                && SystemProperties.getBoolean("persist.sys.pp.photos", true);
         if (packageName != null
                 && (packageName.equals("com.google.android.googlequicksearchbox")
                 || packageName.equals("com.google.android.apps.pixel.agent")
@@ -940,7 +941,8 @@ public class ApplicationPackageManager extends PackageManager {
             if (Arrays.asList(featuresTensor).contains(name)) return false;
             if (Arrays.asList(featuresNexus).contains(name)) return true;
         }
-        boolean enableTensorFeaturesOnNonTensor = SystemProperties.getBoolean("persist.sys.pp.tensor", false);
+        boolean enableTensorFeaturesOnNonTensor = !Process.isIsolated()
+                && SystemProperties.getBoolean("persist.sys.pp.tensor", false);
         boolean isTensorDevice = SystemProperties.get("ro.product.model").matches("Pixel (6|7|8|9|10)[a-zA-Z ]*");
         if (packageName != null && packageName.equals("com.google.android.as")) {
             if (isTensorDevice && Arrays.asList(featuresTensor).contains(name)) {
