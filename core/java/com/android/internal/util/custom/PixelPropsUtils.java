@@ -20,6 +20,7 @@ import android.app.ActivityThread;
 import android.app.Application;
 import android.app.TaskStackListener;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
@@ -65,9 +66,6 @@ public final class PixelPropsUtils {
     private static final String PACKAGE_VENDING = "com.android.vending";
 
     private static final String PROP_HOOKS = "persist.sys.pihooks_";
-    private static final String SPOOF_PP = "persist.sys.pp";
-    public static final String SPOOF_GMS = "persist.sys.pp.gms";
-    private static final String SPOOF_VENDING = "persist.sys.pp.vending";
 
     private static final String TAG = PixelPropsUtils.class.getSimpleName();
     private static final boolean DEBUG = false;
@@ -248,16 +246,40 @@ public final class PixelPropsUtils {
     }
 
     public static void spoofBuildGms() {
-        if (!SystemProperties.getBoolean(SPOOF_GMS, true))
-            return;
+        Context context = ActivityThread.currentApplication();
+        if (context == null) return;
+
+        ContentResolver resolver = context.getContentResolver();
+        if (resolver == null) return;
+
+        int value;
+        try {
+            value = Settings.Secure.getInt(resolver,
+                    Settings.Secure.PI_ENABLE_SPOOF, 1);
+        } catch (Exception e) {
+            return; // Settings provider not ready yet
+        }
+        if (value != 1) return;
         for (String key : GMS_SPOOF_KEYS) {
             setPropValue(key, SystemProperties.get(PROP_HOOKS + key));
         }
     }
 
     public static void spoofBuildVending() {
-        if (!SystemProperties.getBoolean(SPOOF_VENDING, true))
-            return;
+        Context context = ActivityThread.currentApplication();
+        if (context == null) return;
+
+        ContentResolver resolver = context.getContentResolver();
+        if (resolver == null) return;
+
+        int value;
+        try {
+            value = Settings.Secure.getInt(resolver,
+                    Settings.Secure.PI_VENDING_SPOOF, 0);
+        } catch (Exception e) {
+            return; // Settings provider not ready yet
+        }
+        if (value != 1) return;
         for (String key : VENDING_SPOOF_KEYS) {
             setPropValue(key, SystemProperties.get(PROP_HOOKS + key));
         }
@@ -279,8 +301,10 @@ public final class PixelPropsUtils {
         String model = SystemProperties.get("ro.product.model");
         boolean isPixelDevice = SystemProperties.get("ro.soc.manufacturer").equalsIgnoreCase("Google");
         boolean isMainlineDevice = isPixelDevice && model.matches("Pixel (8|9|10)[a-zA-Z ]*");
-        boolean isPixelGmsEnabled = SystemProperties.getBoolean(SPOOF_GMS, true);
-        boolean isPixelVendingEnabled = SystemProperties.getBoolean(SPOOF_VENDING, true) && isPixelGmsEnabled;
+        boolean isPixelPropsEnabled = getSecureIntSafe(context,Settings.Secure.PI_PP_SPOOF, 1) == 1;
+        boolean isPixelGmsEnabled = getSecureIntSafe(context, Settings.Secure.PI_ENABLE_SPOOF, 1) == 1;
+        boolean isPixelVendingEnabled = getSecureIntSafe(context,
+                Settings.Secure.PI_VENDING_SPOOF, 1) == 1 && isPixelGmsEnabled;
         propsToChangeGeneric.forEach((k, v) -> setPropValue(k, v));
 
         if (packageName == null || processName == null || packageName.isEmpty()) {
@@ -307,9 +331,9 @@ public final class PixelPropsUtils {
                 }
             }
         } else if (Arrays.asList(packagesToChangeRecentPixel).contains(packageName)) {
-            if (isMainlineDevice || !SystemProperties.getBoolean(SPOOF_PP, true)) {
+            if (isMainlineDevice || !isPixelPropsEnabled) {
                 return;
-            } else if (SystemProperties.getBoolean(SPOOF_PP, true)) {
+            } else if (isPixelPropsEnabled) {
                 if (isDeviceTablet(context.getApplicationContext())) {
                     propsToChange.putAll(propsToChangePixelTablet);
                 } else {
@@ -586,7 +610,16 @@ public final class PixelPropsUtils {
             return;
         }
 
-        boolean isPixelGmsEnabled = SystemProperties.getBoolean(SPOOF_GMS, true);
+        Context context = ActivityThread.currentApplication() != null
+                ? ActivityThread.currentApplication().getApplicationContext()
+                : null;
+        if (context == null) {
+            dlog("Null received in onEngineGetCertificateChain.");
+            return;
+        }
+
+        boolean isPixelGmsEnabled = getSecureIntSafe(context,
+                Settings.Secure.PI_ENABLE_SPOOF, 1) == 1;
         if (!isPixelGmsEnabled) {
             dlog("onEngineGetCertificateChain disabled by setting");
             return;
@@ -596,6 +629,17 @@ public final class PixelPropsUtils {
         if (isCallerSafetyNet()) {
             dlog("Blocked key attestation");
             throw new UnsupportedOperationException();
+        }
+    }
+
+    private static int getSecureIntSafe(Context context, String key, int def) {
+        try {
+            if (context == null) return def;
+            ContentResolver resolver = context.getContentResolver();
+            if (resolver == null) return def;
+            return Settings.Secure.getInt(resolver, key, def);
+        } catch (Throwable t) {
+            return def;
         }
     }
 
