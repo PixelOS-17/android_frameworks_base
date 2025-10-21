@@ -24,6 +24,7 @@ import android.content.res.Resources;
 import android.os.Build;
 import android.os.Process;
 import android.os.SystemProperties;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -43,8 +44,6 @@ public final class AttestationHooks {
     private static final boolean DEBUG = false;
 
     private static final String PACKAGE_PHOTOS = "com.google.android.apps.photos";
-
-    private static final String SPOOF_PHOTOS = "persist.sys.pp.photos";
 
     private static final Map<String, Object> sPixelXLProps = Map.of(
         "BRAND", "google",
@@ -75,7 +74,9 @@ public final class AttestationHooks {
         sProcessName = processName;
 
         String model = SystemProperties.get("ro.product.model");
-        boolean isPhotosSpoofEnabled = SystemProperties.getBoolean(SPOOF_PHOTOS, true);
+        boolean isPhotosSpoofEnabled = Settings.Secure.getInt(
+                context.getContentResolver(),
+                Settings.Secure.PI_PHOTOS_SPOOF, 1) == 1;
 
         if (packageName.equals(PACKAGE_PHOTOS)) {
             if (!isPhotosSpoofEnabled) {
