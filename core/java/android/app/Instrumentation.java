@@ -134,7 +134,6 @@ public class Instrumentation {
             UiAutomation.FLAG_DONT_USE_ACCESSIBILITY})
     public @interface UiAutomationFlags {};
 
-
     private final Object mSync = new Object();
     private ActivityThread mThread = null;
     private Handler mMainHandler = null;
