@@ -16,6 +16,7 @@
 
 package com.android.systemui.volume.dialog
 
+import android.content.res.Configuration
 import android.content.Context
 import android.database.ContentObserver
 import android.net.Uri
@@ -34,6 +35,7 @@ import com.android.app.tracing.coroutines.coroutineScopeTraced
 import com.android.systemui.dagger.qualifiers.Application
 import com.android.systemui.lifecycle.repeatWhenAttached
 import com.android.systemui.res.R
+import com.android.systemui.statusbar.policy.ConfigurationController
 import com.android.systemui.volume.Events
 import com.android.systemui.volume.dialog.dagger.factory.VolumeDialogComponentFactory
 import com.android.systemui.volume.dialog.domain.interactor.VolumeDialogVisibilityInteractor
@@ -48,56 +50,63 @@ constructor(
     @Application context: Context,
     private val componentFactory: VolumeDialogComponentFactory,
     private val visibilityInteractor: VolumeDialogVisibilityInteractor,
+    private val configurationController: ConfigurationController,
     @Assisted private val isVolumeDialogVertical: Boolean,
-) : ComponentDialog(context, R.style.Theme_SystemUI_Dialog_Volume) {
+) : ComponentDialog(context, R.style.Theme_SystemUI_Dialog_Volume),
+    ConfigurationController.ConfigurationListener {
 
     @AssistedFactory
     interface Factory {
         fun create(isVolumeDialogVertical: Boolean): VolumeDialog
     }
 
+    private val onLeftDefault: Boolean = context.resources.getBoolean(
+        R.bool.config_audioPanelOnLeftSide);
     private var volumePanelOnLeft: Boolean = false
+    private var volumePanelOnLeftLand: Boolean = false
 
     private val volumePanelOnLeftObserver =
-        object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) {
-                val onLeft =
-                    Settings.Secure.getIntForUser(
-                        context.contentResolver,
-                        Settings.Secure.VOLUME_PANEL_ON_LEFT,
-                        0,
-                        UserHandle.USER_CURRENT
-                    ) != 0
-
-                if (volumePanelOnLeft != onLeft) {
-                    volumePanelOnLeft = onLeft
-                    applyLayoutAndGravity()
-                }
+    object : ContentObserver(Handler(Looper.getMainLooper())) {
+        override fun onChange(selfChange: Boolean) {
+            val onLeft =
+                Settings.System.getIntForUser(
+                    context.contentResolver,
+                    Settings.System.VOLUME_PANEL_ON_LEFT,
+                    if (onLeftDefault) 1 else 0,
+                    UserHandle.USER_CURRENT
+                ) != 0
+            val onLeftLand =
+                Settings.System.getIntForUser(
+                    context.contentResolver,
+                    Settings.System.VOLUME_PANEL_ON_LEFT_LAND,
+                    if (onLeftDefault) 1 else 0,
+                    UserHandle.USER_CURRENT
+                ) != 0
+            if (volumePanelOnLeft != onLeft || volumePanelOnLeftLand != onLeftLand) {
+                volumePanelOnLeft = onLeft
+                volumePanelOnLeftLand = onLeftLand
+                applyLayoutAndGravity()
             }
         }
+    }
 
     private fun applyLayoutAndGravity() {
         val win = window ?: return
-        val side = if (volumePanelOnLeft) Gravity.LEFT else Gravity.RIGHT
-        val dialogView = win.decorView
 
-        dialogView.layoutDirection =
-            if (volumePanelOnLeft)
-                View.LAYOUT_DIRECTION_RTL
-            else
-                View.LAYOUT_DIRECTION_LTR
-
+        val isLeft = isLandscape() && volumePanelOnLeftLand ||
+            !isLandscape() && volumePanelOnLeft
         if (isVolumeDialogVertical) {
             win.setLayout(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.MATCH_PARENT,
             )
-            win.setGravity(side)
+            win.setGravity(if (isLeft) Gravity.START else Gravity.END)
         } else {
             win.setLayout(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             )
+            val side = if (isLeft) Gravity.START else Gravity.END
             win.setGravity(Gravity.TOP or side)
         }
     }
@@ -119,6 +128,23 @@ constructor(
                     title = "VolumeDialog" // Not the same as Window#setTitle
                 }
         }
+
+        context.contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.VOLUME_PANEL_ON_LEFT),
+            false,
+            volumePanelOnLeftObserver,
+            UserHandle.USER_ALL
+        )
+        context.contentResolver.registerContentObserver(
+            Settings.System.getUriFor(Settings.System.VOLUME_PANEL_ON_LEFT_LAND),
+            false,
+            volumePanelOnLeftObserver,
+            UserHandle.USER_ALL
+        )
+        volumePanelOnLeftObserver.onChange(true)
+        applyLayoutAndGravity()
+        configurationController.addCallback(this)
+
         setCancelable(false)
         setCanceledOnTouchOutside(false)
     }
@@ -142,24 +168,14 @@ constructor(
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        context.contentResolver.registerContentObserver(
-            Settings.Secure.getUriFor(Settings.Secure.VOLUME_PANEL_ON_LEFT),
-            false,
-            volumePanelOnLeftObserver,
-            UserHandle.USER_ALL
-        )
-        volumePanelOnLeft = Settings.Secure.getIntForUser(
-            context.contentResolver, Settings.Secure.VOLUME_PANEL_ON_LEFT,
-            0, UserHandle.USER_CURRENT
-        ) != 0
-        applyLayoutAndGravity()
-    }
-
     override fun onStop() {
         super.onStop()
+        configurationController.removeCallback(this)
         context.contentResolver.unregisterContentObserver(volumePanelOnLeftObserver)
+    }
+
+    override fun onOrientationChanged(orientation: Int) {
+        applyLayoutAndGravity()
     }
 
     /**
@@ -175,5 +191,9 @@ constructor(
             }
         }
         return false
+    }
+
+    private fun isLandscape(): Boolean {
+        return context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     }
 }

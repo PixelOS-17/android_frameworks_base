@@ -80,4 +80,7 @@
     <!-- Whether to show the severe low battery notification that suggests turning on
          Extreme Battery Saver. -->
     <bool name="config_show_extreme_battery_saver_reminder">true</bool>
+
+    <!-- Allow devices override audio panel location to the left side -->
+    <bool name="config_audioPanelOnLeftSide">false</bool>
 </resources>
