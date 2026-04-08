@@ -14009,25 +14009,11 @@ public final class Settings {
         public static final String PER_APPS_DEVICE_SPOOF_CACHE = "per_apps_device_spoof_cache";
 
         /**
-         * Whether to use PIF spoof for google apps
-         * @hide
-         */
-        @Readable
-        public static final String PI_ENABLE_SPOOF = "pi_enable_spoof";
-
-        /**
          * Whether to use PixelProps spoof for google apps
          * @hide
          */
         @Readable
         public static final String PI_PP_SPOOF = "pi_pp_spoof";
-
-        /**
-         * Whether to use PIF spoof for Play store
-         * @hide
-         */
-        @Readable
-        public static final String PI_VENDING_SPOOF = "pi_vending_spoof";
 
         /**
          * Whether to use spoof for photos
