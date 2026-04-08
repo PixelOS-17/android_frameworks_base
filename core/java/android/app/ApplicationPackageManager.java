@@ -216,6 +216,10 @@ public class ApplicationPackageManager extends PackageManager {
 
     private final boolean mUseSystemFeaturesCache;
 
+    // Spoof setting caches — refreshed by ContentObserver, avoids per-call Settings reads
+    private static volatile boolean sPhotosSpoofEnabled = true;
+    private static boolean sSpoofObserverRegistered = false;
+
     UserManager getUserManager() {
         if (mUserManager == null) {
             mUserManager = UserManager.get(mContext);
@@ -920,9 +924,7 @@ public class ApplicationPackageManager extends PackageManager {
         }
 
         String packageName = ActivityThread.currentPackageName();
-        boolean isPhotosSpoofEnabled = !Process.isIsolated()
-                && Settings.Secure.getInt(mContext.getContentResolver(),
-                        Settings.Secure.PI_PHOTOS_SPOOF, 1) == 1;
+        boolean isPhotosSpoofEnabled = !Process.isIsolated() && sPhotosSpoofEnabled;
         if (packageName != null
                 && (packageName.equals("com.google.android.googlequicksearchbox")
                 || packageName.equals("com.google.android.apps.pixel.agent")
@@ -2390,6 +2392,37 @@ public class ApplicationPackageManager extends PackageManager {
         mContext = context;
         mPM = pm;
         mUseSystemFeaturesCache = isSystemFeaturesCacheAvailable();
+        if (!Process.isIsolated()) {
+            registerSpoofSettingsObserver();
+        }
+    }
+
+    private void registerSpoofSettingsObserver() {
+        synchronized (ApplicationPackageManager.class) {
+            if (sSpoofObserverRegistered) return;
+            sSpoofObserverRegistered = true;
+        }
+        final ContentResolver cr = mContext.getContentResolver();
+        final Runnable refresh = () -> {
+            try {
+                sPhotosSpoofEnabled = Settings.Secure.getInt(
+                        cr, Settings.Secure.PI_PHOTOS_SPOOF, 1) == 1;
+            } catch (Throwable t) {
+                // Settings provider not ready yet; cache stays at safe defaults
+            }
+        };
+        try {
+            final android.database.ContentObserver observer =
+                    new android.database.ContentObserver(null) {
+                @Override
+                public void onChange(boolean selfChange) { refresh.run(); }
+            };
+            cr.registerContentObserver(
+                    Settings.Secure.getUriFor(Settings.Secure.PI_PHOTOS_SPOOF), false, observer);
+        } catch (Throwable t) {
+            // Observer registration failed; feature will remain disabled
+        }
+        refresh.run();
     }
 
     @RavenwoodIgnore
