@@ -80,7 +80,6 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeoutException;
 
-import com.android.internal.util.custom.PerAppsPropsUtils;
 import com.android.internal.util.custom.PixelPropsUtils;
 
 /**
@@ -1365,7 +1364,6 @@ public class Instrumentation {
                 .instantiateApplication(cl, className);
         app.attach(context);
         PixelPropsUtils.setProps(context);
-        PerAppsPropsUtils.setProps(context);
         return app;
     }
     
@@ -1385,7 +1383,6 @@ public class Instrumentation {
         Application app = (Application)clazz.newInstance();
         app.attach(context);
         PixelPropsUtils.setProps(context);
-        PerAppsPropsUtils.setProps(context);
         return app;
     }
 
