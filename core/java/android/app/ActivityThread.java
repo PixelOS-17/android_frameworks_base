@@ -8173,7 +8173,7 @@ public final class ActivityThread extends ClientTransactionHandler
         if (pifService.shouldSpoof(data.processName)) {
             pifService.spoofBuildFields(data.processName);
             if (pifService.isSpoofSignatureEnabled()) {
-                pifService.spoofSignature();
+                pifService.spoofSignature(data.processName);
             }
         }
 
