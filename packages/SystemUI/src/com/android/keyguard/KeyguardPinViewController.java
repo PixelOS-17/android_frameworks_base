@@ -19,7 +19,7 @@ package com.android.keyguard;
 import static com.android.systemui.flags.Flags.LOCKSCREEN_ENABLE_LANDSCAPE;
 
 import android.hardware.input.InputManager;
-import android.provider.Settings;
+import android.uilatencystats.UiLatencyStatsManager;
 import android.view.View;
 
 import com.android.internal.logging.UiEvent;
@@ -35,6 +35,9 @@ import com.android.systemui.res.R;
 import com.android.systemui.statusbar.policy.DevicePostureController;
 import com.android.systemui.user.domain.interactor.SelectedUserInteractor;
 import com.android.systemui.util.wrapper.LockPatternCheckerWrapper;
+
+import java.time.Duration;
+import java.util.Optional;
 
 public class KeyguardPinViewController
         extends KeyguardPinBasedInputViewController<KeyguardPINView> {
@@ -68,13 +71,14 @@ public class KeyguardPinViewController
             BouncerHapticPlayer bouncerHapticPlayer,
             UserActivityNotifier userActivityNotifier,
             InputManager inputManager,
-            LockPatternCheckerWrapper lockPatternCheckerWrapper
+            LockPatternCheckerWrapper lockPatternCheckerWrapper,
+            Optional<UiLatencyStatsManager> uiLatencyStatsManager
     ) {
         super(view, keyguardUpdateMonitor, securityMode, lockPatternUtils, keyguardSecurityCallback,
                 messageAreaControllerFactory, latencyTracker,
                 emergencyButtonController, falsingCollector, featureFlags, selectedUserInteractor,
                 keyguardKeyboardInteractor, bouncerHapticPlayer, userActivityNotifier, inputManager,
-                lockPatternCheckerWrapper
+                lockPatternCheckerWrapper, uiLatencyStatsManager
         );
         mKeyguardUpdateMonitor = keyguardUpdateMonitor;
         mPostureController = postureController;
@@ -142,8 +146,8 @@ public class KeyguardPinViewController
     }
 
     @Override
-    protected void handleAttemptLockout(long elapsedRealtimeDeadline) {
-        super.handleAttemptLockout(elapsedRealtimeDeadline);
+    protected void handleAttemptLockout(Duration lockoutEndTime) {
+        super.handleAttemptLockout(lockoutEndTime);
         updateAutoConfirmationState();
     }
 

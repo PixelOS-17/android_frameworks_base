@@ -19,16 +19,21 @@ package android.window;
 import static android.view.Display.INVALID_DISPLAY;
 import static android.view.WindowManager.transitTypeToString;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.app.Activity.FullscreenModeRequest;
 import android.app.ActivityManager;
 import android.app.ActivityManager.AppTask.WindowingLayer;
 import android.app.WindowConfiguration;
 import android.graphics.Rect;
 import android.os.IRemoteCallback;
 import android.os.Parcelable;
+import android.view.InsetsState;
 import android.view.WindowManager;
 
 import com.android.internal.util.DataClass;
+
+import java.util.List;
 
 /**
  * Used to communicate information about what is changing during a transition to a TransitionPlayer.
@@ -56,11 +61,11 @@ public final class TransitionRequestInfo implements Parcelable {
     private @Nullable TransitionRequestInfo.RemoteTransitionInfo mRemoteTransitionInfo;
 
     /**
-     * If non-null, this request was triggered by this display change. This will not be complete:
+     * If non-null, this request was triggered by these display changes. This will not be complete:
      * The reliable parts should be flags, rotation start/end (if rotating), and start/end bounds
      * (if size is changing).
      */
-    private @Nullable TransitionRequestInfo.DisplayChange mDisplayChange;
+    private @Nullable List<TransitionRequestInfo.DisplayChange> mDisplayChanges;
 
     /**
      * If non-null, this request was triggered by an app's request to move the trigger task.
@@ -78,6 +83,11 @@ public final class TransitionRequestInfo implements Parcelable {
      */
     private @Nullable TransitionRequestInfo.WindowingLayerChange mWindowingLayerChange;
 
+    /**
+     * If non-null, this request was triggered by an app's request to enter/exit fullscreen mode.
+     */
+    private @Nullable TransitionRequestInfo.FullscreenRequestChange mFullscreenRequestChange;
+
     /** The transition flags known at the time of the request. These may not be complete. */
     private final int mFlags;
 
@@ -91,7 +101,8 @@ public final class TransitionRequestInfo implements Parcelable {
             @Nullable RemoteTransitionInfo remoteTransition) {
         this(type, triggerTask, null /* pipChange */, remoteTransition, null /* displayChange */,
                 null /* requestedLocation */, null /* userChange */,
-                null /* windowingLayerChange */, 0 /* flags */, -1 /* debugId */);
+                null /* windowingLayerChange */, null /* fullscreenRequestChange */,
+                0 /* flags */, -1 /* debugId */);
     }
 
     /** constructor override */
@@ -102,7 +113,8 @@ public final class TransitionRequestInfo implements Parcelable {
             int flags) {
         this(type, triggerTask, null /* pipChange */, remoteTransition, null /* displayChange */,
                 null /* requestedLocation */, null /* userChange */,
-                null /* windowingLayerChange */, flags, -1 /* debugId */);
+                null /* windowingLayerChange */, null /* fullscreenRequestChange */,
+                flags, -1 /* debugId */);
     }
 
     /** constructor override */
@@ -110,11 +122,12 @@ public final class TransitionRequestInfo implements Parcelable {
             @WindowManager.TransitionType int type,
             @Nullable ActivityManager.RunningTaskInfo triggerTask,
             @Nullable RemoteTransitionInfo remoteTransition,
-            @Nullable TransitionRequestInfo.DisplayChange displayChange,
+            @Nullable List<TransitionRequestInfo.DisplayChange> displayChanges,
             int flags) {
-        this(type, triggerTask, null /* pipChange */, remoteTransition, displayChange,
+        this(type, triggerTask, null /* pipChange */, remoteTransition, displayChanges,
                 null /* requestedLocation */, null /* userChange */,
-                null /* windowingLayerChange */, flags, -1 /* debugId */);
+                null /* windowingLayerChange */, null /* fullscreenRequestChange */,
+                flags, -1 /* debugId */);
     }
 
     /** constructor override */
@@ -123,12 +136,13 @@ public final class TransitionRequestInfo implements Parcelable {
             @Nullable ActivityManager.RunningTaskInfo triggerTask,
             @Nullable ActivityManager.RunningTaskInfo pipTask,
             @Nullable RemoteTransitionInfo remoteTransition,
-            @Nullable TransitionRequestInfo.DisplayChange displayChange,
+            @Nullable List<TransitionRequestInfo.DisplayChange> displayChanges,
             int flags) {
         this(type, triggerTask,
                 pipTask != null ? new TransitionRequestInfo.PipChange(pipTask) : null,
-                remoteTransition, displayChange, null /* requestedLocation */,
-                null /* userChange */, null /* windowingLayerChange */, flags, -1 /* debugId */);
+                remoteTransition, displayChanges, null /* requestedLocation */,
+                null /* userChange */, null /* windowingLayerChange */,
+                null /* fullscreenRequestChange */, flags, -1 /* debugId */);
     }
 
     /** @hide */
@@ -140,7 +154,8 @@ public final class TransitionRequestInfo implements Parcelable {
     public RemoteTransition getRemoteTransition() {
         if (mRemoteTransitionInfo == null) return null;
         return new RemoteTransition(mRemoteTransitionInfo.getRemoteTransition(),
-                mRemoteTransitionInfo.getDebugName());
+                null /* appThread */, mRemoteTransitionInfo.getDebugName(),
+                mRemoteTransitionInfo.getFilter());
     }
 
     /** Set RemoteTransition info from a RemoteTransition object */
@@ -154,6 +169,9 @@ public final class TransitionRequestInfo implements Parcelable {
 
     /** Requested change to a display. */
     @DataClass(genToString = true, genSetters = true, genBuilder = false, genConstructor = false)
+    // TODO: b/448471638 - remove 'mDisplayId', 'mEndRotation', 'mEndAbsBounds' fields after
+    //  cleaning up the flag, this suppress annotation could be also removed after this
+    @DataClass.Suppress({"getEndRotation", "getDisplayId", "getEndAbsBounds"})
     public static final class DisplayChange implements Parcelable {
         private final int mDisplayId;
 
@@ -161,22 +179,60 @@ public final class TransitionRequestInfo implements Parcelable {
         @Nullable private Rect mStartAbsBounds = null;
         @Nullable private Rect mEndAbsBounds = null;
 
+        // TODO: b/448471638 - make this @NonNull after cleaning up the flag
+        @Nullable private DisplayAreaInfo mEndDisplayAreaInfo = null;
+
         private int mStartRotation = WindowConfiguration.ROTATION_UNDEFINED;
         private int mEndRotation = WindowConfiguration.ROTATION_UNDEFINED;
         private boolean mPhysicalDisplayChanged = false;
         /** The display to reparent to on disconnect; if invalid, this isn't a disconnect change. */
         private int mDisconnectReparentDisplay = INVALID_DISPLAY;
 
+        @Nullable private InsetsState mEndInsetsState = null;
+
         /** Create empty display-change. */
         public DisplayChange(int displayId) {
             mDisplayId = displayId;
         }
 
+        /** Create empty display-change. */
+        public DisplayChange(@NonNull DisplayAreaInfo endDisplayAreaInfo) {
+            mEndDisplayAreaInfo = endDisplayAreaInfo;
+            mDisplayId = endDisplayAreaInfo.displayId;
+        }
+
         /** Create a display-change representing a rotation. */
-        public DisplayChange(int displayId, int startRotation, int endRotation) {
+        public DisplayChange(int displayId, int startRotation, int endRotation,
+                @Nullable InsetsState endInsetsState) {
             mDisplayId = displayId;
             mStartRotation = startRotation;
             mEndRotation = endRotation;
+            mEndInsetsState = endInsetsState;
+        }
+
+        public int getDisplayId() {
+            if (!com.android.window.flags.Flags.syncedDisplayModeUpdates()) {
+                return mDisplayId;
+            }
+
+            return mEndDisplayAreaInfo.displayId;
+        }
+
+        @Nullable
+        public Rect getEndAbsBounds() {
+            if (!com.android.window.flags.Flags.syncedDisplayModeUpdates()) {
+                return mEndAbsBounds;
+            }
+
+            return mEndDisplayAreaInfo.configuration.windowConfiguration.getBounds();
+        }
+
+        public int getEndRotation() {
+            if (!com.android.window.flags.Flags.syncedDisplayModeUpdates()) {
+                return mEndRotation;
+            }
+
+            return mEndDisplayAreaInfo.configuration.windowConfiguration.getRotation();
         }
 
 
@@ -194,11 +250,6 @@ public final class TransitionRequestInfo implements Parcelable {
         //@formatter:off
 
 
-        @DataClass.Generated.Member
-        public int getDisplayId() {
-            return mDisplayId;
-        }
-
         /**
          * If non-null, these bounds changes should ignore any potential rotation changes.
          */
@@ -208,18 +259,13 @@ public final class TransitionRequestInfo implements Parcelable {
         }
 
         @DataClass.Generated.Member
-        public @Nullable Rect getEndAbsBounds() {
-            return mEndAbsBounds;
+        public @Nullable DisplayAreaInfo getEndDisplayAreaInfo() {
+            return mEndDisplayAreaInfo;
         }
 
         @DataClass.Generated.Member
         public int getStartRotation() {
             return mStartRotation;
-        }
-
-        @DataClass.Generated.Member
-        public int getEndRotation() {
-            return mEndRotation;
         }
 
         @DataClass.Generated.Member
@@ -235,6 +281,11 @@ public final class TransitionRequestInfo implements Parcelable {
             return mDisconnectReparentDisplay;
         }
 
+        @DataClass.Generated.Member
+        public @Nullable InsetsState getEndInsetsState() {
+            return mEndInsetsState;
+        }
+
         /**
          * If non-null, these bounds changes should ignore any potential rotation changes.
          */
@@ -247,6 +298,12 @@ public final class TransitionRequestInfo implements Parcelable {
         @DataClass.Generated.Member
         public @android.annotation.NonNull DisplayChange setEndAbsBounds(@android.annotation.NonNull Rect value) {
             mEndAbsBounds = value;
+            return this;
+        }
+
+        @DataClass.Generated.Member
+        public @android.annotation.NonNull DisplayChange setEndDisplayAreaInfo(@android.annotation.NonNull DisplayAreaInfo value) {
+            mEndDisplayAreaInfo = value;
             return this;
         }
 
@@ -277,6 +334,12 @@ public final class TransitionRequestInfo implements Parcelable {
             return this;
         }
 
+        @DataClass.Generated.Member
+        public @android.annotation.NonNull DisplayChange setEndInsetsState(@android.annotation.NonNull InsetsState value) {
+            mEndInsetsState = value;
+            return this;
+        }
+
         @Override
         @DataClass.Generated.Member
         public String toString() {
@@ -287,10 +350,12 @@ public final class TransitionRequestInfo implements Parcelable {
                     "displayId = " + mDisplayId + ", " +
                     "startAbsBounds = " + mStartAbsBounds + ", " +
                     "endAbsBounds = " + mEndAbsBounds + ", " +
+                    "endDisplayAreaInfo = " + mEndDisplayAreaInfo + ", " +
                     "startRotation = " + mStartRotation + ", " +
                     "endRotation = " + mEndRotation + ", " +
                     "physicalDisplayChanged = " + mPhysicalDisplayChanged + ", " +
-                    "disconnectReparentDisplay = " + mDisconnectReparentDisplay +
+                    "disconnectReparentDisplay = " + mDisconnectReparentDisplay + ", " +
+                    "endInsetsState = " + mEndInsetsState +
             " }";
         }
 
@@ -300,17 +365,21 @@ public final class TransitionRequestInfo implements Parcelable {
             // You can override field parcelling by defining methods like:
             // void parcelFieldName(Parcel dest, int flags) { ... }
 
-            byte flg = 0;
-            if (mPhysicalDisplayChanged) flg |= 0x20;
+            int flg = 0;
+            if (mPhysicalDisplayChanged) flg |= 0x40;
             if (mStartAbsBounds != null) flg |= 0x2;
             if (mEndAbsBounds != null) flg |= 0x4;
-            dest.writeByte(flg);
+            if (mEndDisplayAreaInfo != null) flg |= 0x8;
+            if (mEndInsetsState != null) flg |= 0x100;
+            dest.writeInt(flg);
             dest.writeInt(mDisplayId);
             if (mStartAbsBounds != null) dest.writeTypedObject(mStartAbsBounds, flags);
             if (mEndAbsBounds != null) dest.writeTypedObject(mEndAbsBounds, flags);
+            if (mEndDisplayAreaInfo != null) dest.writeTypedObject(mEndDisplayAreaInfo, flags);
             dest.writeInt(mStartRotation);
             dest.writeInt(mEndRotation);
             dest.writeInt(mDisconnectReparentDisplay);
+            if (mEndInsetsState != null) dest.writeTypedObject(mEndInsetsState, flags);
         }
 
         @Override
@@ -324,22 +393,26 @@ public final class TransitionRequestInfo implements Parcelable {
             // You can override field unparcelling by defining methods like:
             // static FieldType unparcelFieldName(Parcel in) { ... }
 
-            byte flg = in.readByte();
-            boolean physicalDisplayChanged = (flg & 0x20) != 0;
+            int flg = in.readInt();
+            boolean physicalDisplayChanged = (flg & 0x40) != 0;
             int displayId = in.readInt();
             Rect startAbsBounds = (flg & 0x2) == 0 ? null : (Rect) in.readTypedObject(Rect.CREATOR);
             Rect endAbsBounds = (flg & 0x4) == 0 ? null : (Rect) in.readTypedObject(Rect.CREATOR);
+            DisplayAreaInfo endDisplayAreaInfo = (flg & 0x8) == 0 ? null : (DisplayAreaInfo) in.readTypedObject(DisplayAreaInfo.CREATOR);
             int startRotation = in.readInt();
             int endRotation = in.readInt();
             int disconnectReparentDisplay = in.readInt();
+            InsetsState endInsetsState = (flg & 0x100) == 0 ? null : (InsetsState) in.readTypedObject(InsetsState.CREATOR);
 
             this.mDisplayId = displayId;
             this.mStartAbsBounds = startAbsBounds;
             this.mEndAbsBounds = endAbsBounds;
+            this.mEndDisplayAreaInfo = endDisplayAreaInfo;
             this.mStartRotation = startRotation;
             this.mEndRotation = endRotation;
             this.mPhysicalDisplayChanged = physicalDisplayChanged;
             this.mDisconnectReparentDisplay = disconnectReparentDisplay;
+            this.mEndInsetsState = endInsetsState;
 
             // onConstructed(); // You can define this method to get a callback
         }
@@ -359,10 +432,10 @@ public final class TransitionRequestInfo implements Parcelable {
         };
 
         @DataClass.Generated(
-                time = 1758142326544L,
+                time = 1774351421538L,
                 codegenVersion = "1.0.23",
                 sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
-                inputSignatures = "private final  int mDisplayId\nprivate @android.annotation.Nullable android.graphics.Rect mStartAbsBounds\nprivate @android.annotation.Nullable android.graphics.Rect mEndAbsBounds\nprivate  int mStartRotation\nprivate  int mEndRotation\nprivate  boolean mPhysicalDisplayChanged\nprivate  int mDisconnectReparentDisplay\nclass DisplayChange extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
+                inputSignatures = "private final  int mDisplayId\nprivate @android.annotation.Nullable android.graphics.Rect mStartAbsBounds\nprivate @android.annotation.Nullable android.graphics.Rect mEndAbsBounds\nprivate @android.annotation.Nullable android.window.DisplayAreaInfo mEndDisplayAreaInfo\nprivate  int mStartRotation\nprivate  int mEndRotation\nprivate  boolean mPhysicalDisplayChanged\nprivate  int mDisconnectReparentDisplay\nprivate @android.annotation.Nullable android.view.InsetsState mEndInsetsState\npublic  int getDisplayId()\npublic @android.annotation.Nullable android.graphics.Rect getEndAbsBounds()\npublic  int getEndRotation()\nclass DisplayChange extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
         @Deprecated
         private void __metadata() {}
 
@@ -496,7 +569,7 @@ public final class TransitionRequestInfo implements Parcelable {
         };
 
         @DataClass.Generated(
-                time = 1758142326555L,
+                time = 1774351421552L,
                 codegenVersion = "1.0.23",
                 sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
                 inputSignatures = "private @android.annotation.NonNull android.window.WindowContainerToken mTaskFragmentToken\nprivate @android.annotation.NonNull android.app.ActivityManager.RunningTaskInfo mTaskInfo\nclass PipChange extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
@@ -617,7 +690,7 @@ public final class TransitionRequestInfo implements Parcelable {
         };
 
         @DataClass.Generated(
-                time = 1758142326558L,
+                time = 1774351421557L,
                 codegenVersion = "1.0.23",
                 sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
                 inputSignatures = "private  int mDisplayId\nprivate @android.annotation.NonNull android.graphics.Rect mBounds\nclass RequestedLocation extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
@@ -722,7 +795,7 @@ public final class TransitionRequestInfo implements Parcelable {
         };
 
         @DataClass.Generated(
-                time = 1758142326561L,
+                time = 1774351421559L,
                 codegenVersion = "1.0.23",
                 sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
                 inputSignatures = "private final  int mPreviousUserId\nprivate final  int mNewUserId\nclass UserChange extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
@@ -738,7 +811,7 @@ public final class TransitionRequestInfo implements Parcelable {
     @DataClass(genToString = true, genSetters = true, genBuilder = false, genConstructor = false)
     public static final class WindowingLayerChange implements Parcelable {
         private final @WindowingLayer int mWindowingLayer;
-        private final @android.annotation.NonNull IRemoteCallback mRemoteCallback;
+        private final @Nullable IRemoteCallback mRemoteCallback;
 
         public WindowingLayerChange(@WindowingLayer int windowingLayer, IRemoteCallback remoteCallback) {
             mWindowingLayer = windowingLayer;
@@ -766,7 +839,7 @@ public final class TransitionRequestInfo implements Parcelable {
         }
 
         @DataClass.Generated.Member
-        public @android.annotation.NonNull IRemoteCallback getRemoteCallback() {
+        public @Nullable IRemoteCallback getRemoteCallback() {
             return mRemoteCallback;
         }
 
@@ -788,8 +861,11 @@ public final class TransitionRequestInfo implements Parcelable {
             // You can override field parcelling by defining methods like:
             // void parcelFieldName(Parcel dest, int flags) { ... }
 
+            byte flg = 0;
+            if (mRemoteCallback != null) flg |= 0x2;
+            dest.writeByte(flg);
             dest.writeInt(mWindowingLayer);
-            dest.writeStrongInterface(mRemoteCallback);
+            if (mRemoteCallback != null) dest.writeStrongInterface(mRemoteCallback);
         }
 
         @Override
@@ -803,15 +879,14 @@ public final class TransitionRequestInfo implements Parcelable {
             // You can override field unparcelling by defining methods like:
             // static FieldType unparcelFieldName(Parcel in) { ... }
 
+            byte flg = in.readByte();
             int windowingLayer = in.readInt();
-            IRemoteCallback remoteCallback = IRemoteCallback.Stub.asInterface(in.readStrongBinder());
+            IRemoteCallback remoteCallback = (flg & 0x2) == 0 ? null : IRemoteCallback.Stub.asInterface(in.readStrongBinder());
 
             this.mWindowingLayer = windowingLayer;
             com.android.internal.util.AnnotationValidations.validate(
                     WindowingLayer.class, null, mWindowingLayer);
             this.mRemoteCallback = remoteCallback;
-            com.android.internal.util.AnnotationValidations.validate(
-                    android.annotation.NonNull.class, null, mRemoteCallback);
 
             // onConstructed(); // You can define this method to get a callback
         }
@@ -831,10 +906,10 @@ public final class TransitionRequestInfo implements Parcelable {
         };
 
         @DataClass.Generated(
-                time = 1758142326564L,
+                time = 1774351421563L,
                 codegenVersion = "1.0.23",
                 sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
-                inputSignatures = "private final @android.app.ActivityManager.AppTask.WindowingLayer int mWindowingLayer\nprivate final @android.annotation.NonNull android.os.IRemoteCallback mRemoteCallback\nclass WindowingLayerChange extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
+                inputSignatures = "private final @android.app.ActivityManager.AppTask.WindowingLayer int mWindowingLayer\nprivate final @android.annotation.Nullable android.os.IRemoteCallback mRemoteCallback\nclass WindowingLayerChange extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
         @Deprecated
         private void __metadata() {}
 
@@ -856,10 +931,13 @@ public final class TransitionRequestInfo implements Parcelable {
         private final IRemoteTransition mRemoteTransition;
         @Nullable
         private final String mDebugName;
+        @Nullable
+        private final TransitionFilter mFilter;
 
         public RemoteTransitionInfo(RemoteTransition remoteTransition) {
             mRemoteTransition = remoteTransition.getRemoteTransition();
             mDebugName = remoteTransition.getDebugName();
+            mFilter = remoteTransition.getFilter();
         }
 
 
@@ -887,6 +965,11 @@ public final class TransitionRequestInfo implements Parcelable {
             return mDebugName;
         }
 
+        @DataClass.Generated.Member
+        public @Nullable TransitionFilter getFilter() {
+            return mFilter;
+        }
+
         @Override
         @DataClass.Generated.Member
         public String toString() {
@@ -895,7 +978,8 @@ public final class TransitionRequestInfo implements Parcelable {
 
             return "RemoteTransitionInfo { " +
                     "remoteTransition = " + mRemoteTransition + ", " +
-                    "debugName = " + mDebugName +
+                    "debugName = " + mDebugName + ", " +
+                    "filter = " + mFilter +
             " }";
         }
 
@@ -907,9 +991,11 @@ public final class TransitionRequestInfo implements Parcelable {
 
             byte flg = 0;
             if (mDebugName != null) flg |= 0x2;
+            if (mFilter != null) flg |= 0x4;
             dest.writeByte(flg);
             dest.writeStrongInterface(mRemoteTransition);
             if (mDebugName != null) dest.writeString(mDebugName);
+            if (mFilter != null) dest.writeTypedObject(mFilter, flags);
         }
 
         @Override
@@ -926,11 +1012,13 @@ public final class TransitionRequestInfo implements Parcelable {
             byte flg = in.readByte();
             IRemoteTransition remoteTransition = IRemoteTransition.Stub.asInterface(in.readStrongBinder());
             String debugName = (flg & 0x2) == 0 ? null : in.readString();
+            TransitionFilter filter = (flg & 0x4) == 0 ? null : (TransitionFilter) in.readTypedObject(TransitionFilter.CREATOR);
 
             this.mRemoteTransition = remoteTransition;
             com.android.internal.util.AnnotationValidations.validate(
                     android.annotation.NonNull.class, null, mRemoteTransition);
             this.mDebugName = debugName;
+            this.mFilter = filter;
 
             // onConstructed(); // You can define this method to get a callback
         }
@@ -950,10 +1038,10 @@ public final class TransitionRequestInfo implements Parcelable {
         };
 
         @DataClass.Generated(
-                time = 1758142326566L,
+                time = 1774351421567L,
                 codegenVersion = "1.0.23",
                 sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
-                inputSignatures = "private final @android.annotation.NonNull android.window.IRemoteTransition mRemoteTransition\nprivate final @android.annotation.Nullable java.lang.String mDebugName\nclass RemoteTransitionInfo extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genConstructor=false)")
+                inputSignatures = "private final @android.annotation.NonNull android.window.IRemoteTransition mRemoteTransition\nprivate final @android.annotation.Nullable java.lang.String mDebugName\nprivate final @android.annotation.Nullable android.window.TransitionFilter mFilter\nclass RemoteTransitionInfo extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genConstructor=false)")
         @Deprecated
         private void __metadata() {}
 
@@ -963,6 +1051,117 @@ public final class TransitionRequestInfo implements Parcelable {
 
     }
 
+    @DataClass(genToString = true, genSetters = true, genBuilder = false, genConstructor = false)
+    public static final class FullscreenRequestChange implements Parcelable {
+        private final @FullscreenModeRequest int mModeRequest;
+        private final @Nullable IRemoteCallback mRemoteCallback;
+
+        public FullscreenRequestChange(@FullscreenModeRequest int modeRequest,
+                @Nullable IRemoteCallback remoteCallback) {
+            mModeRequest = modeRequest;
+            mRemoteCallback = remoteCallback;
+        }
+
+
+
+        // Code below generated by codegen v1.0.23.
+        //
+        // DO NOT MODIFY!
+        // CHECKSTYLE:OFF Generated code
+        //
+        // To regenerate run:
+        // $ codegen $ANDROID_BUILD_TOP/frameworks/base/core/java/android/window/TransitionRequestInfo.java
+        //
+        // To exclude the generated code from IntelliJ auto-formatting enable (one-time):
+        //   Settings > Editor > Code Style > Formatter Control
+        //@formatter:off
+
+
+        @DataClass.Generated.Member
+        public @FullscreenModeRequest int getModeRequest() {
+            return mModeRequest;
+        }
+
+        @DataClass.Generated.Member
+        public @Nullable IRemoteCallback getRemoteCallback() {
+            return mRemoteCallback;
+        }
+
+        @Override
+        @DataClass.Generated.Member
+        public String toString() {
+            // You can override field toString logic by defining methods like:
+            // String fieldNameToString() { ... }
+
+            return "FullscreenRequestChange { " +
+                    "modeRequest = " + mModeRequest + ", " +
+                    "remoteCallback = " + mRemoteCallback +
+            " }";
+        }
+
+        @Override
+        @DataClass.Generated.Member
+        public void writeToParcel(@android.annotation.NonNull android.os.Parcel dest, int flags) {
+            // You can override field parcelling by defining methods like:
+            // void parcelFieldName(Parcel dest, int flags) { ... }
+
+            byte flg = 0;
+            if (mRemoteCallback != null) flg |= 0x2;
+            dest.writeByte(flg);
+            dest.writeInt(mModeRequest);
+            if (mRemoteCallback != null) dest.writeStrongInterface(mRemoteCallback);
+        }
+
+        @Override
+        @DataClass.Generated.Member
+        public int describeContents() { return 0; }
+
+        /** @hide */
+        @SuppressWarnings({"unchecked", "RedundantCast"})
+        @DataClass.Generated.Member
+        /* package-private */ FullscreenRequestChange(@android.annotation.NonNull android.os.Parcel in) {
+            // You can override field unparcelling by defining methods like:
+            // static FieldType unparcelFieldName(Parcel in) { ... }
+
+            byte flg = in.readByte();
+            int modeRequest = in.readInt();
+            IRemoteCallback remoteCallback = (flg & 0x2) == 0 ? null : IRemoteCallback.Stub.asInterface(in.readStrongBinder());
+
+            this.mModeRequest = modeRequest;
+            com.android.internal.util.AnnotationValidations.validate(
+                    FullscreenModeRequest.class, null, mModeRequest);
+            this.mRemoteCallback = remoteCallback;
+
+            // onConstructed(); // You can define this method to get a callback
+        }
+
+        @DataClass.Generated.Member
+        public static final @android.annotation.NonNull Parcelable.Creator<FullscreenRequestChange> CREATOR
+                = new Parcelable.Creator<FullscreenRequestChange>() {
+            @Override
+            public FullscreenRequestChange[] newArray(int size) {
+                return new FullscreenRequestChange[size];
+            }
+
+            @Override
+            public FullscreenRequestChange createFromParcel(@android.annotation.NonNull android.os.Parcel in) {
+                return new FullscreenRequestChange(in);
+            }
+        };
+
+        @DataClass.Generated(
+                time = 1774351421570L,
+                codegenVersion = "1.0.23",
+                sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
+                inputSignatures = "private final @android.app.Activity.FullscreenModeRequest int mModeRequest\nprivate final @android.annotation.Nullable android.os.IRemoteCallback mRemoteCallback\nclass FullscreenRequestChange extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genBuilder=false, genConstructor=false)")
+        @Deprecated
+        private void __metadata() {}
+
+
+        //@formatter:on
+        // End of generated code
+
+    }
 
 
 
@@ -992,8 +1191,8 @@ public final class TransitionRequestInfo implements Parcelable {
      *   {@code TaskFragment} token and the {@code TaskInfo} of the task with PiP candidate activity.
      * @param remoteTransitionInfo
      *   If non-null, a remote-transition associated with the source of this transition.
-     * @param displayChange
-     *   If non-null, this request was triggered by this display change. This will not be complete:
+     * @param displayChanges
+     *   If non-null, this request was triggered by these display changes. This will not be complete:
      *   The reliable parts should be flags, rotation start/end (if rotating), and start/end bounds
      *   (if size is changing).
      * @param requestedLocation
@@ -1003,6 +1202,8 @@ public final class TransitionRequestInfo implements Parcelable {
      * @param windowingLayerChange
      *   If non-null, this request was triggered by an app's request to change trigger task's
      *   windowing layer.
+     * @param fullscreenRequestChange
+     *   If non-null, this request was triggered by an app's request to enter/exit fullscreen mode.
      * @param flags
      *   The transition flags known at the time of the request. These may not be complete.
      * @param debugId
@@ -1014,10 +1215,11 @@ public final class TransitionRequestInfo implements Parcelable {
             @Nullable ActivityManager.RunningTaskInfo triggerTask,
             @Nullable TransitionRequestInfo.PipChange pipChange,
             @Nullable TransitionRequestInfo.RemoteTransitionInfo remoteTransitionInfo,
-            @Nullable TransitionRequestInfo.DisplayChange displayChange,
+            @Nullable List<TransitionRequestInfo.DisplayChange> displayChanges,
             @Nullable TransitionRequestInfo.RequestedLocation requestedLocation,
             @Nullable TransitionRequestInfo.UserChange userChange,
             @Nullable TransitionRequestInfo.WindowingLayerChange windowingLayerChange,
+            @Nullable TransitionRequestInfo.FullscreenRequestChange fullscreenRequestChange,
             int flags,
             int debugId) {
         this.mType = type;
@@ -1026,10 +1228,11 @@ public final class TransitionRequestInfo implements Parcelable {
         this.mTriggerTask = triggerTask;
         this.mPipChange = pipChange;
         this.mRemoteTransitionInfo = remoteTransitionInfo;
-        this.mDisplayChange = displayChange;
+        this.mDisplayChanges = displayChanges;
         this.mRequestedLocation = requestedLocation;
         this.mUserChange = userChange;
         this.mWindowingLayerChange = windowingLayerChange;
+        this.mFullscreenRequestChange = fullscreenRequestChange;
         this.mFlags = flags;
         this.mDebugId = debugId;
 
@@ -1071,13 +1274,13 @@ public final class TransitionRequestInfo implements Parcelable {
     }
 
     /**
-     * If non-null, this request was triggered by this display change. This will not be complete:
+     * If non-null, this request was triggered by these display changes. This will not be complete:
      * The reliable parts should be flags, rotation start/end (if rotating), and start/end bounds
      * (if size is changing).
      */
     @DataClass.Generated.Member
-    public @Nullable TransitionRequestInfo.DisplayChange getDisplayChange() {
-        return mDisplayChange;
+    public @Nullable List<TransitionRequestInfo.DisplayChange> getDisplayChanges() {
+        return mDisplayChanges;
     }
 
     /**
@@ -1103,6 +1306,14 @@ public final class TransitionRequestInfo implements Parcelable {
     @DataClass.Generated.Member
     public @Nullable TransitionRequestInfo.WindowingLayerChange getWindowingLayerChange() {
         return mWindowingLayerChange;
+    }
+
+    /**
+     * If non-null, this request was triggered by an app's request to enter/exit fullscreen mode.
+     */
+    @DataClass.Generated.Member
+    public @Nullable TransitionRequestInfo.FullscreenRequestChange getFullscreenRequestChange() {
+        return mFullscreenRequestChange;
     }
 
     /**
@@ -1151,13 +1362,13 @@ public final class TransitionRequestInfo implements Parcelable {
     }
 
     /**
-     * If non-null, this request was triggered by this display change. This will not be complete:
+     * If non-null, this request was triggered by these display changes. This will not be complete:
      * The reliable parts should be flags, rotation start/end (if rotating), and start/end bounds
      * (if size is changing).
      */
     @DataClass.Generated.Member
-    public @android.annotation.NonNull TransitionRequestInfo setDisplayChange(@android.annotation.NonNull TransitionRequestInfo.DisplayChange value) {
-        mDisplayChange = value;
+    public @android.annotation.NonNull TransitionRequestInfo setDisplayChanges(@android.annotation.NonNull List<TransitionRequestInfo.DisplayChange> value) {
+        mDisplayChanges = value;
         return this;
     }
 
@@ -1189,6 +1400,15 @@ public final class TransitionRequestInfo implements Parcelable {
         return this;
     }
 
+    /**
+     * If non-null, this request was triggered by an app's request to enter/exit fullscreen mode.
+     */
+    @DataClass.Generated.Member
+    public @android.annotation.NonNull TransitionRequestInfo setFullscreenRequestChange(@android.annotation.NonNull TransitionRequestInfo.FullscreenRequestChange value) {
+        mFullscreenRequestChange = value;
+        return this;
+    }
+
     @Override
     @DataClass.Generated.Member
     public String toString() {
@@ -1200,10 +1420,11 @@ public final class TransitionRequestInfo implements Parcelable {
                 "triggerTask = " + mTriggerTask + ", " +
                 "pipChange = " + mPipChange + ", " +
                 "remoteTransitionInfo = " + mRemoteTransitionInfo + ", " +
-                "displayChange = " + mDisplayChange + ", " +
+                "displayChanges = " + mDisplayChanges + ", " +
                 "requestedLocation = " + mRequestedLocation + ", " +
                 "userChange = " + mUserChange + ", " +
                 "windowingLayerChange = " + mWindowingLayerChange + ", " +
+                "fullscreenRequestChange = " + mFullscreenRequestChange + ", " +
                 "flags = " + mFlags + ", " +
                 "debugId = " + mDebugId +
         " }";
@@ -1219,19 +1440,21 @@ public final class TransitionRequestInfo implements Parcelable {
         if (mTriggerTask != null) flg |= 0x2;
         if (mPipChange != null) flg |= 0x4;
         if (mRemoteTransitionInfo != null) flg |= 0x8;
-        if (mDisplayChange != null) flg |= 0x10;
+        if (mDisplayChanges != null) flg |= 0x10;
         if (mRequestedLocation != null) flg |= 0x20;
         if (mUserChange != null) flg |= 0x40;
         if (mWindowingLayerChange != null) flg |= 0x80;
+        if (mFullscreenRequestChange != null) flg |= 0x100;
         dest.writeInt(flg);
         dest.writeInt(mType);
         if (mTriggerTask != null) dest.writeTypedObject(mTriggerTask, flags);
         if (mPipChange != null) dest.writeTypedObject(mPipChange, flags);
         if (mRemoteTransitionInfo != null) dest.writeTypedObject(mRemoteTransitionInfo, flags);
-        if (mDisplayChange != null) dest.writeTypedObject(mDisplayChange, flags);
+        if (mDisplayChanges != null) dest.writeParcelableList(mDisplayChanges, flags);
         if (mRequestedLocation != null) dest.writeTypedObject(mRequestedLocation, flags);
         if (mUserChange != null) dest.writeTypedObject(mUserChange, flags);
         if (mWindowingLayerChange != null) dest.writeTypedObject(mWindowingLayerChange, flags);
+        if (mFullscreenRequestChange != null) dest.writeTypedObject(mFullscreenRequestChange, flags);
         dest.writeInt(mFlags);
         dest.writeInt(mDebugId);
     }
@@ -1252,10 +1475,15 @@ public final class TransitionRequestInfo implements Parcelable {
         ActivityManager.RunningTaskInfo triggerTask = (flg & 0x2) == 0 ? null : (ActivityManager.RunningTaskInfo) in.readTypedObject(ActivityManager.RunningTaskInfo.CREATOR);
         TransitionRequestInfo.PipChange pipChange = (flg & 0x4) == 0 ? null : (TransitionRequestInfo.PipChange) in.readTypedObject(TransitionRequestInfo.PipChange.CREATOR);
         TransitionRequestInfo.RemoteTransitionInfo remoteTransitionInfo = (flg & 0x8) == 0 ? null : (TransitionRequestInfo.RemoteTransitionInfo) in.readTypedObject(TransitionRequestInfo.RemoteTransitionInfo.CREATOR);
-        TransitionRequestInfo.DisplayChange displayChange = (flg & 0x10) == 0 ? null : (TransitionRequestInfo.DisplayChange) in.readTypedObject(TransitionRequestInfo.DisplayChange.CREATOR);
+        List<TransitionRequestInfo.DisplayChange> displayChanges = null;
+        if ((flg & 0x10) != 0) {
+            displayChanges = new java.util.ArrayList<>();
+            in.readParcelableList(displayChanges, TransitionRequestInfo.DisplayChange.class.getClassLoader(), TransitionRequestInfo.DisplayChange.class);
+        }
         TransitionRequestInfo.RequestedLocation requestedLocation = (flg & 0x20) == 0 ? null : (TransitionRequestInfo.RequestedLocation) in.readTypedObject(TransitionRequestInfo.RequestedLocation.CREATOR);
         TransitionRequestInfo.UserChange userChange = (flg & 0x40) == 0 ? null : (TransitionRequestInfo.UserChange) in.readTypedObject(TransitionRequestInfo.UserChange.CREATOR);
         TransitionRequestInfo.WindowingLayerChange windowingLayerChange = (flg & 0x80) == 0 ? null : (TransitionRequestInfo.WindowingLayerChange) in.readTypedObject(TransitionRequestInfo.WindowingLayerChange.CREATOR);
+        TransitionRequestInfo.FullscreenRequestChange fullscreenRequestChange = (flg & 0x100) == 0 ? null : (TransitionRequestInfo.FullscreenRequestChange) in.readTypedObject(TransitionRequestInfo.FullscreenRequestChange.CREATOR);
         int flags = in.readInt();
         int debugId = in.readInt();
 
@@ -1265,10 +1493,11 @@ public final class TransitionRequestInfo implements Parcelable {
         this.mTriggerTask = triggerTask;
         this.mPipChange = pipChange;
         this.mRemoteTransitionInfo = remoteTransitionInfo;
-        this.mDisplayChange = displayChange;
+        this.mDisplayChanges = displayChanges;
         this.mRequestedLocation = requestedLocation;
         this.mUserChange = userChange;
         this.mWindowingLayerChange = windowingLayerChange;
+        this.mFullscreenRequestChange = fullscreenRequestChange;
         this.mFlags = flags;
         this.mDebugId = debugId;
 
@@ -1290,10 +1519,10 @@ public final class TransitionRequestInfo implements Parcelable {
     };
 
     @DataClass.Generated(
-            time = 1758142326580L,
+            time = 1774351421589L,
             codegenVersion = "1.0.23",
             sourceFile = "frameworks/base/core/java/android/window/TransitionRequestInfo.java",
-            inputSignatures = "private final @android.view.WindowManager.TransitionType int mType\nprivate @android.annotation.Nullable android.app.ActivityManager.RunningTaskInfo mTriggerTask\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.PipChange mPipChange\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.RemoteTransitionInfo mRemoteTransitionInfo\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.DisplayChange mDisplayChange\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.RequestedLocation mRequestedLocation\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.UserChange mUserChange\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.WindowingLayerChange mWindowingLayerChange\nprivate final  int mFlags\nprivate final  int mDebugId\n  java.lang.String typeToString()\npublic  android.window.RemoteTransition getRemoteTransition()\npublic  void setRemoteTransition(android.window.RemoteTransition)\nclass TransitionRequestInfo extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genAidl=true)")
+            inputSignatures = "private final @android.view.WindowManager.TransitionType int mType\nprivate @android.annotation.Nullable android.app.ActivityManager.RunningTaskInfo mTriggerTask\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.PipChange mPipChange\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.RemoteTransitionInfo mRemoteTransitionInfo\nprivate @android.annotation.Nullable java.util.List<android.window.TransitionRequestInfo.DisplayChange> mDisplayChanges\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.RequestedLocation mRequestedLocation\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.UserChange mUserChange\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.WindowingLayerChange mWindowingLayerChange\nprivate @android.annotation.Nullable android.window.TransitionRequestInfo.FullscreenRequestChange mFullscreenRequestChange\nprivate final  int mFlags\nprivate final  int mDebugId\n  java.lang.String typeToString()\npublic  android.window.RemoteTransition getRemoteTransition()\npublic  void setRemoteTransition(android.window.RemoteTransition)\nclass TransitionRequestInfo extends java.lang.Object implements [android.os.Parcelable]\n@com.android.internal.util.DataClass(genToString=true, genSetters=true, genAidl=true)")
     @Deprecated
     private void __metadata() {}
 

@@ -26,6 +26,8 @@ import static android.app.admin.DevicePolicyManager.PASSWORD_QUALITY_SOMETHING;
 import static android.app.admin.DevicePolicyManager.PASSWORD_QUALITY_UNSPECIFIED;
 
 import static com.android.internal.widget.LockPatternUtils.StrongAuthTracker.STRONG_AUTH_REQUIRED_AFTER_USER_LOCKDOWN;
+import static com.android.internal.widget.VerifyCredentialResponse.OK;
+import static com.android.internal.widget.VerifyCredentialResponse.credIncorrect;
 
 import static junit.framework.Assert.assertEquals;
 
@@ -104,7 +106,8 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.isLockPatternEnabled(mUserId)).thenReturn(false);
         when(mLockPatternUtils.isLockPasswordEnabled(mUserId)).thenReturn(true);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPassword("1234"), mUserId, null)).thenReturn(false);
+                LockscreenCredential.createPassword("1234"), mUserId, null)).thenReturn(
+                credIncorrect());
         assertEquals(-1, mCommand.exec(mBinder, in, out, err,
                 new String[] { "set-pin", "--old", "1234" },
                 mShellCallback, mResultReceiver));
@@ -119,7 +122,7 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.getKeyguardStoredPasswordQuality(mUserId)).thenReturn(
                 PASSWORD_QUALITY_NUMERIC);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(true);
+                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_NUMERIC));
         assertEquals(0, mCommand.exec(new Binder(), in, out, err,
@@ -139,7 +142,7 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.getKeyguardStoredPasswordQuality(mUserId)).thenReturn(
                 PASSWORD_QUALITY_NUMERIC);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(true);
+                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_ALPHABETIC));
         assertEquals(-1, mCommand.exec(new Binder(), in, out, err,
@@ -166,7 +169,7 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.getKeyguardStoredPasswordQuality(mUserId)).thenReturn(
                 PASSWORD_QUALITY_ALPHABETIC);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPassword("1234"), mUserId, null)).thenReturn(true);
+                LockscreenCredential.createPassword("1234"), mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_ALPHABETIC));
         assertEquals(0,  mCommand.exec(new Binder(), in, out, err,
@@ -186,7 +189,7 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.getKeyguardStoredPasswordQuality(mUserId)).thenReturn(
                 PASSWORD_QUALITY_ALPHABETIC);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPassword("1234"), mUserId, null)).thenReturn(true);
+                LockscreenCredential.createPassword("1234"), mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_COMPLEX));
         assertEquals(-1,  mCommand.exec(new Binder(), in, out, err,
@@ -211,9 +214,8 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.isLockPatternEnabled(mUserId)).thenReturn(true);
         when(mLockPatternUtils.isLockPasswordEnabled(mUserId)).thenReturn(false);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPattern(stringToPattern("1234"),
-                        LockPatternUtils.PATTERN_SIZE_DEFAULT),
-                mUserId, null)).thenReturn(true);
+<                LockscreenCredential.createPattern(stringToPattern("1234")),
+                mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_SOMETHING));
         assertEquals(0, mCommand.exec(new Binder(), in, out, err,
@@ -233,9 +235,8 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.isLockPatternEnabled(mUserId)).thenReturn(true);
         when(mLockPatternUtils.isLockPasswordEnabled(mUserId)).thenReturn(false);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPattern(stringToPattern("1234"),
-                        LockPatternUtils.PATTERN_SIZE_DEFAULT),
-                mUserId, null)).thenReturn(true);
+<                LockscreenCredential.createPattern(stringToPattern("1234")),
+                mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_NUMERIC));
         assertEquals(-1, mCommand.exec(new Binder(), in, out, err,
@@ -260,9 +261,8 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.isLockPatternEnabled(mUserId)).thenReturn(true);
         when(mLockPatternUtils.isLockPasswordEnabled(mUserId)).thenReturn(false);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPattern(stringToPattern("1234"),
-                        LockPatternUtils.PATTERN_SIZE_DEFAULT),
-                mUserId, null)).thenReturn(true);
+<                LockscreenCredential.createPattern(stringToPattern("1234")),
+                mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_UNSPECIFIED));
         assertEquals(0, mCommand.exec(new Binder(), in, out, err,
@@ -281,9 +281,8 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.isLockPatternEnabled(mUserId)).thenReturn(true);
         when(mLockPatternUtils.isLockPasswordEnabled(mUserId)).thenReturn(false);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPattern(stringToPattern("1234"),
-                        LockPatternUtils.PATTERN_SIZE_DEFAULT),
-                mUserId, null)).thenReturn(true);
+<                LockscreenCredential.createPattern(stringToPattern("1234")),
+                mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_SOMETHING));
         assertEquals(-1, mCommand.exec(new Binder(), in, out, err,
@@ -300,7 +299,7 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.getKeyguardStoredPasswordQuality(mUserId)).thenReturn(
                 PASSWORD_QUALITY_NUMERIC);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(true);
+                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_UNSPECIFIED));
         when(mLockPatternUtils.getRequestedPasswordComplexity(mUserId))
@@ -321,7 +320,7 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.getKeyguardStoredPasswordQuality(mUserId)).thenReturn(
                 PASSWORD_QUALITY_NUMERIC);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(true);
+                LockscreenCredential.createPin("1234"), mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_UNSPECIFIED));
         when(mLockPatternUtils.getRequestedPasswordComplexity(mUserId))
@@ -343,9 +342,8 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.isLockPatternEnabled(mUserId)).thenReturn(true);
         when(mLockPatternUtils.isLockPasswordEnabled(mUserId)).thenReturn(false);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPattern(stringToPattern("1234"),
-                        LockPatternUtils.PATTERN_SIZE_DEFAULT),
-                mUserId, null)).thenReturn(true);
+<                LockscreenCredential.createPattern(stringToPattern("1234")),
+                mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_UNSPECIFIED));
         when(mLockPatternUtils.getRequestedPasswordComplexity(mUserId))
@@ -364,9 +362,8 @@ public class LockSettingsShellCommandTest {
         when(mLockPatternUtils.isLockPatternEnabled(mUserId)).thenReturn(true);
         when(mLockPatternUtils.isLockPasswordEnabled(mUserId)).thenReturn(false);
         when(mLockPatternUtils.checkCredential(
-                LockscreenCredential.createPattern(stringToPattern("1234"),
-                        LockPatternUtils.PATTERN_SIZE_DEFAULT),
-                mUserId, null)).thenReturn(true);
+<                LockscreenCredential.createPattern(stringToPattern("1234")),
+                mUserId, null)).thenReturn(OK);
         when(mLockPatternUtils.getRequestedPasswordMetrics(mUserId))
                 .thenReturn(metricsForAdminQuality(PASSWORD_QUALITY_UNSPECIFIED));
         when(mLockPatternUtils.getRequestedPasswordComplexity(mUserId))

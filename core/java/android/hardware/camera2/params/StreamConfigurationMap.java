@@ -1744,6 +1744,7 @@ public final class StreamConfigurationMap {
             case ImageFormat.RAW_PRIVATE:
             case ImageFormat.RAW10:
             case ImageFormat.RAW12:
+            case ImageFormat.RAW14:
                 return HAL_DATASPACE_ARBITRARY;
             default:
                 return HAL_DATASPACE_UNKNOWN;
@@ -2331,6 +2332,10 @@ public final class StreamConfigurationMap {
                 return "RAW_PRIVATE";
             case ImageFormat.RAW10:
                 return "RAW10";
+            case ImageFormat.RAW12:
+                return "RAW12";
+            case ImageFormat.RAW14:
+                return "RAW14";
             case ImageFormat.DEPTH16:
                 return "DEPTH16";
             case ImageFormat.DEPTH_POINT_CLOUD:

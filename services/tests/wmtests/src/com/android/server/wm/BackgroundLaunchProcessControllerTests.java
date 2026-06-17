@@ -33,12 +33,15 @@ import android.app.BackgroundStartPrivileges;
 import android.content.Context;
 import android.os.Binder;
 import android.os.IBinder;
+import android.platform.test.annotations.DisableFlags;
+import android.platform.test.annotations.EnableFlags;
 import android.platform.test.annotations.Presubmit;
 import android.platform.test.flag.junit.SetFlagsRule;
 
 import androidx.test.filters.SmallTest;
 
 import com.android.server.wm.BackgroundActivityStartController.BalVerdict;
+import com.android.window.flags.Flags;
 
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -158,6 +161,7 @@ public class BackgroundLaunchProcessControllerTests {
     }
 
     @Test
+    @DisableFlags(Flags.FLAG_BAL_IGNORE_CALLBACK)
     public void testAllowedByToken() {
         Binder token = new Binder();
         mActivityStartAllowed.add(token);
@@ -174,6 +178,24 @@ public class BackgroundLaunchProcessControllerTests {
     }
 
     @Test
+    @EnableFlags(Flags.FLAG_BAL_IGNORE_CALLBACK)
+    public void testAllowedByTokenEnabledCallback() {
+        Binder token = new Binder();
+        mActivityStartAllowed.add(token);
+        mController.addOrUpdateAllowBackgroundStartPrivileges(token,
+                BackgroundStartPrivileges.allowBackgroundActivityStarts(token));
+        BalVerdict balVerdict = mController.areBackgroundActivityStartsAllowed(
+                mPid, mUid, mPackageName,
+                mAppSwitchState, mBalCheckConfiguration,
+                mHasActivityInVisibleTask, mInPinnedWindowMode,
+                mHasBackgroundActivityStartPrivileges,
+                mLastStopAppSwitchesTime, mLastActivityLaunchTime,
+                mLastActivityFinishTime);
+        assertThat(balVerdict.getCode()).isEqualTo(BAL_BLOCK);
+    }
+
+    @Test
+    @DisableFlags(Flags.FLAG_BAL_IGNORE_CALLBACK)
     public void testAllowedByNullToken() {
         Binder token = new Binder();
         mController.addOrUpdateAllowBackgroundStartPrivileges(token,
@@ -186,6 +208,37 @@ public class BackgroundLaunchProcessControllerTests {
                 mLastStopAppSwitchesTime, mLastActivityLaunchTime,
                 mLastActivityFinishTime);
         assertThat(balVerdict.getCode()).isEqualTo(BAL_ALLOW_TOKEN);
+    }
+
+    @Test
+    @EnableFlags(Flags.FLAG_BAL_IGNORE_CALLBACK)
+    public void testAllowedByNullTokenEnabledCallback() {
+        Binder token = new Binder();
+        mController.addOrUpdateAllowBackgroundStartPrivileges(token,
+                BackgroundStartPrivileges.ALLOW_BAL);
+        BalVerdict balVerdict = mController.areBackgroundActivityStartsAllowed(
+                mPid, mUid, mPackageName,
+                mAppSwitchState, mBalCheckConfiguration,
+                mHasActivityInVisibleTask, mInPinnedWindowMode,
+                mHasBackgroundActivityStartPrivileges,
+                mLastStopAppSwitchesTime, mLastActivityLaunchTime,
+                mLastActivityFinishTime);
+        assertThat(balVerdict.getCode()).isEqualTo(BAL_ALLOW_TOKEN);
+    }
+
+    @Test
+    public void testBoundByForegroundFgs() {
+        mAppSwitchState = APP_SWITCH_ALLOW;
+        mController.addBoundClientUid(999, "visible.package", Context.BIND_ALLOW_ACTIVITY_STARTS);
+        mHasActiveNotPinnedVisibleWindow.add(999);
+        BalVerdict balVerdict = mController.areBackgroundActivityStartsAllowed(
+                mPid, mUid, mPackageName,
+                mAppSwitchState, mFgsCheckConfiguration,
+                mHasActivityInVisibleTask, mInPinnedWindowMode,
+                mHasBackgroundActivityStartPrivileges,
+                mLastStopAppSwitchesTime, mLastActivityLaunchTime,
+                mLastActivityFinishTime);
+        assertThat(balVerdict.getCode()).isEqualTo(BAL_ALLOW_BOUND_BY_FOREGROUND);
     }
 
     @Test

@@ -66,7 +66,6 @@ import com.android.internal.util.ArrayUtils;
 import com.android.internal.util.DumpUtils;
 import com.android.internal.widget.LockPatternUtils;
 import com.android.server.SystemService;
-import com.android.server.biometrics.Flags;
 import com.android.server.biometrics.Utils;
 import com.android.server.biometrics.log.BiometricContext;
 import com.android.server.biometrics.sensors.AuthenticationStateListeners;
@@ -717,7 +716,7 @@ public class FaceService extends SystemService {
             final String virtualInstance = "virtual";
             final boolean isVirtualHalPresent =
                     faceSensorConfigurations.doesInstanceExist(virtualInstance);
-            if (Flags.faceVhalFeature() && Utils.isFaceVirtualEnabled(getContext())) {
+            if (Utils.isFaceVirtualEnabled(getContext())) {
                 if (isVirtualHalPresent) {
                     return new Pair<>(virtualInstance,
                             faceSensorConfigurations.getSensorPropForInstance(virtualInstance));
@@ -854,7 +853,7 @@ public class FaceService extends SystemService {
 
     void syncEnrollmentsNow() {
         Utils.checkPermissionOrShell(getContext(), MANAGE_FACE);
-        if (Flags.faceVhalFeature() && Utils.isFaceVirtualEnabled(getContext())) {
+        if (Utils.isFaceVirtualEnabled(getContext())) {
             Slog.i(TAG, "Sync virtual enrollments");
             final int userId = ActivityManager.getCurrentUser();
             for (ServiceProvider provider : mRegistry.getProviders()) {

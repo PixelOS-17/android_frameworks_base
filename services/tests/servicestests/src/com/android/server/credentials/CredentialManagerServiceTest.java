@@ -19,7 +19,9 @@ import static com.google.common.truth.Truth.assertThat;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.credentials.flags.Flags;
 import android.os.UserHandle;
+import android.platform.test.flag.junit.SetFlagsRule;
 import android.provider.Settings;
 
 import androidx.annotation.NonNull;
@@ -29,6 +31,7 @@ import androidx.test.runner.AndroidJUnit4;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -64,10 +67,14 @@ public final class CredentialManagerServiceTest {
     private Context mContext = null;
     private MockSettingsWrapper mSettingsWrapper = null;
 
+    @Rule
+    public final SetFlagsRule mSetFlagsRule = new SetFlagsRule();
+
     @Before
     public void setUp() throws CertificateException {
         mContext = ApplicationProvider.getApplicationContext();
         mSettingsWrapper = new MockSettingsWrapper(mContext);
+        mSetFlagsRule.enableFlags(Flags.FLAG_MULTI_USER_FIX_ENABLED);
     }
 
     @Test

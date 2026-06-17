@@ -2277,7 +2277,7 @@ public class ChooserActivity extends ResolverActivity implements
                     Log.d(TAG, "Action to be updated is " + targetIntent.getAction());
                 }
             } else if (DEBUG) {
-                Log.d(TAG, "Can not log Chooser Counts of null ResovleInfo");
+                Log.d(TAG, "Can not log Chooser Counts of null ResolveInfo");
             }
         }
         mIsSuccessfullySelected = true;

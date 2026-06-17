@@ -21,7 +21,6 @@ import android.annotation.UserIdInt;
 import android.app.role.RoleManager;
 import android.app.supervision.SupervisionManager;
 import android.content.Context;
-import android.content.pm.Flags;
 import android.os.Binder;
 import android.os.UserHandle;
 import android.text.TextUtils;
@@ -62,41 +61,32 @@ public class ProtectedPackages {
 
     @Nullable
     @GuardedBy("this")
-    private final String mDeviceProvisioningPackage;
+    private SparseArray<String> mDevicePolicyControllerPackages;
 
     @Nullable
     @GuardedBy("this")
-    private final SparseArray<Set<String>> mOwnerProtectedPackages = new SparseArray<>();
-
-    public ProtectedPackages(Context context) {
-        mContext = context;
-        mDeviceProvisioningPackage = context.getResources().getString(
-                R.string.config_deviceProvisioningPackage);
+<    private synchronized boolean isDevicePolicyManagementPackage(int userId, String packageName) {
+        if (packageName == null) {
+            return false;
+        }
+        if (mDevicePolicyControllerPackages == null) {
+            return false;
+        }
+        return packageName.equals(getDevicePolicyControllerPackage(userId));
     }
 
     /**
-     * Sets the device/profile owner information.
+     * Returns the DPC package name for the given user if it exists, otherwise returns null. A
+     * DPC can be profile owner, device owner, device controller. For a given user, there can only
+     * one DPC package exist.
      */
-    public synchronized void setDeviceAndProfileOwnerPackages(
-            int deviceOwnerUserId, String deviceOwnerPackage,
-            SparseArray<String> profileOwnerPackages) {
-        mDeviceOwnerUserId = deviceOwnerUserId;
-        mDeviceOwnerPackage =
-                (deviceOwnerUserId == UserHandle.USER_NULL) ? null : deviceOwnerPackage;
-        mProfileOwnerPackages = (profileOwnerPackages == null) ? null
-                : profileOwnerPackages.clone();
-    }
-
-    /** Sets packages protected by a device or profile owner. */
-    public synchronized void setOwnerProtectedPackages(
-            @UserIdInt int userId, @Nullable List<String> packageNames) {
-        if (packageNames == null) {
-            mOwnerProtectedPackages.remove(userId);
-        } else {
-            mOwnerProtectedPackages.put(userId, new ArraySet<>(packageNames));
+    @Nullable
+    public synchronized String getDevicePolicyControllerPackage(int userId) {
+        if (mDevicePolicyControllerPackages == null) {
+            return null;
         }
+        return mDevicePolicyControllerPackages.get(userId);
     }
-
 
     private synchronized boolean hasDeviceOwnerOrProfileOwner(int userId, String packageName) {
         if (packageName == null) {
@@ -136,11 +126,14 @@ public class ProtectedPackages {
         if (packageName == null) {
             return false;
         }
+        if (isDevicePolicyManagementPackage(userId, packageName)) {
+            return true;
+        }
         if (packageName.equals(mDeviceProvisioningPackage)
                 || isOwnerProtectedPackage(userId, packageName)) {
             return true;
         }
-        if (Flags.protectSupervisionPackages() && isSupervisionPackage(userId, packageName)) {
+<        if (isSupervisionPackage(userId, packageName)) {
             return true;
         }
         return false;

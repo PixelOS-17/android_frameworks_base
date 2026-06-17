@@ -44,13 +44,10 @@ import android.view.ViewRootImpl.ActivityConfigCallback
 import android.view.WindowManager.TAKE_SCREENSHOT_PROVIDED_IMAGE
 import android.view.WindowManager.TAKE_SCREENSHOT_SELECTED_REGION
 import android.widget.Toast
-import android.window.DesktopExperienceFlags
 import android.window.WindowContext
 import androidx.core.animation.doOnEnd
 import com.android.internal.logging.UiEventLogger
 import com.android.settingslib.applications.InterestingConfigChanges
-import com.android.systemui.Flags
-import com.android.systemui.Flags.screenshotAnnounceLiveRegion
 import com.android.systemui.broadcast.BroadcastDispatcher
 import com.android.systemui.broadcast.BroadcastSender
 import com.android.systemui.clipboardoverlay.ClipboardOverlayController
@@ -137,10 +134,7 @@ internal constructor(
         window = screenshotWindowFactory.create(display)
         context = window.getContext()
 
-        audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator?
-
-        viewProxy = viewProxyFactory.getProxy(context, display.displayId)
+<        viewProxy = viewProxyFactory.getProxy(window, display.displayId)
 
         screenshotHandler.setOnTimeoutRunnable {
             if (LogConfig.DEBUG_UI) {
@@ -249,7 +243,9 @@ internal constructor(
         window.setFocusable(true)
         viewProxy.requestFocus()
 
-        enqueueScrollCaptureRequest(requestId, screenshot.userHandle)
+        if (!screenshot.suppressLongScreenshot) {
+            enqueueScrollCaptureRequest(requestId, screenshot.userHandle)
+        }
 
         window.attachWindow()
 
@@ -286,11 +282,7 @@ internal constructor(
     private fun prepareViewForNewScreenshot(screenshot: ScreenshotData, oldPackageName: String?) {
         window.whenWindowAttached {
             announcementResolver.getScreenshotAnnouncement(screenshot.userHandle.identifier) {
-                if (screenshotAnnounceLiveRegion()) {
-                    viewProxy.setSavingAnnouncement(it)
-                } else {
-                    viewProxy.announceForAccessibility(it)
-                }
+                viewProxy.setSavingAnnouncement(it)
             }
         }
 
@@ -394,7 +386,7 @@ internal constructor(
                                 { requestScrollCapture(requestId, owner) },
                                 150,
                             )
-                            viewProxy.updateInsets(window.getWindowInsets())
+                            viewProxy.updateInsets()
                             // Screenshot animation calculations won't be valid anymore, so just end
                             screenshotAnimation?.let { currentAnimation ->
                                 if (currentAnimation.isRunning) {
@@ -417,28 +409,17 @@ internal constructor(
                 0,
                 response.packageName,
             )
-            actionsController.onScrollChipReady(requestId) {
-                onScrollButtonClicked(owner, response)
+            actionsController.onScrollChipReady(requestId) { uri ->
+                onScrollButtonClicked(owner, response, uri)
             }
         }
     }
 
-    private fun startPartialScreenshotActivity(owner: UserHandle) {
-        scrollCaptureExecutor.executeBatchScrollCapture(
-            BitmapScreenshot(context, imageCapture.captureDisplay(display.displayId, null)),
-            {
-                val intent = actionIntentCreator.createLongScreenshotIntent(owner)
-                context.startActivity(intent)
-
-                statusBarManager.collapsePanels()
-            },
-            { _: Rect, onTransitionEnd: Runnable, _: LongScreenshot ->
-                onTransitionEnd.run()
-            },
-        )
-    }
-
-    private fun onScrollButtonClicked(owner: UserHandle, response: ScrollCaptureResponse) {
+<    private fun onScrollButtonClicked(
+        owner: UserHandle,
+        response: ScrollCaptureResponse,
+        originalBitmapUri: Uri,
+    ) {
         if (LogConfig.DEBUG_INPUT) {
             Log.d(TAG, "scroll chip tapped")
         }
@@ -454,22 +435,23 @@ internal constructor(
         }
         // delay starting scroll capture to make sure scrim is up before the app moves
         viewProxy.prepareScrollingTransition(response, newScreenshot, screenshotTakenInPortrait) {
-            executeBatchScrollCapture(response, owner)
+            executeBatchScrollCapture(response, owner, originalBitmapUri)
         }
     }
 
-    private fun executeBatchScrollCapture(response: ScrollCaptureResponse, owner: UserHandle) {
+    private fun executeBatchScrollCapture(
+        response: ScrollCaptureResponse,
+        owner: UserHandle,
+        originalBitmapUri: Uri,
+    ) {
         scrollCaptureExecutor.executeBatchScrollCapture(
             response,
             {
-                val intent = actionIntentCreator.createLongScreenshotIntent(owner)
-                if (SCREENSHOT_MULTIDISPLAY_FOCUS_CHANGE.isTrue) {
-                    val options = ActivityOptions.makeBasic()
-                    options.setLaunchDisplayId(context.displayId)
-                    context.startActivity(intent, options.toBundle())
-                } else {
-                    context.startActivity(intent)
-                }
+                val intent =
+                    actionIntentCreator.createLongScreenshotIntent(owner, originalBitmapUri)
+                val options = ActivityOptions.makeBasic()
+                options.setLaunchDisplayId(context.displayId)
+                context.startActivity(intent, options.toBundle())
             },
             { viewProxy.restoreNonScrollingUi() },
             { transitionDestination: Rect, onTransitionEnd: Runnable, longScreenshot: LongScreenshot
@@ -586,13 +568,40 @@ internal constructor(
                 screenshot.bitmap,
                 screenshot.userHandle,
                 display.displayId,
-                packageLabel,
+<                screenshot.customSaveUri,
             )
         future.addListener(
             {
                 try {
                     val result = future.get()
                     Log.d(TAG, "Saved screenshot: $result")
+
+                    // Signifies custom save failed & saved to default folder instead
+                    if (
+                        screenshot.customSaveUri != null &&
+                            !result.uri.toString().startsWith(screenshot.customSaveUri.toString())
+                    ) {
+                        val customFolderName =
+                            screenshot.customSaveUri.lastPathSegment
+                                ?.split(":")
+                                ?.last()
+                                ?.split("/")
+                                ?.last()
+                                ?.let {
+                                    if (it.length > 15) {
+                                        "${it.take(15)}…"
+                                    } else {
+                                        it
+                                    }
+                                }
+                        val defaultSaveErrorText =
+                            context.getString(
+                                R.string.screenshot_custom_uri_save_fail_message,
+                                customFolderName,
+                            )
+                        notificationController.notifyCustomUriSaveError(defaultSaveErrorText)
+                    }
+
                     logScreenshotResultStatus(result.uri, screenshot.userHandle)
                     onResult.accept(result)
                     if (LogConfig.DEBUG_CALLBACK) {
@@ -657,13 +666,6 @@ internal constructor(
         private const val SETTINGS_SECURE_USER_SETUP_COMPLETE = "user_setup_complete"
 
         const val SCREENSHOT_CORNER_DEFAULT_TIMEOUT_MILLIS: Int = 3000
-
-        val SCREENSHOT_MULTIDISPLAY_FOCUS_CHANGE =
-            DesktopExperienceFlags.DesktopExperienceFlag(
-                Flags::screenshotMultidisplayFocusChange,
-                /* shouldOverrideByDevOption= */ true,
-                Flags.FLAG_SCREENSHOT_MULTIDISPLAY_FOCUS_CHANGE,
-            )
 
         /** Does the aspect ratio of the bitmap with insets removed match the bounds. */
         private fun aspectRatiosMatch(

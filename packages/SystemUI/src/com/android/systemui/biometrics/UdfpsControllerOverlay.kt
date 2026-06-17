@@ -55,15 +55,18 @@ import com.android.systemui.keyguard.domain.interactor.KeyguardTransitionInterac
 import com.android.systemui.keyguard.shared.model.KeyguardState
 import com.android.systemui.power.domain.interactor.PowerInteractor
 import com.android.systemui.res.R
-import com.android.systemui.settings.brightness.domain.interactor.BrightnessMirrorShowingInteractor
-import com.android.systemui.shade.domain.interactor.ShadeInteractor
+import com.android.systemui.scene.domain.interactor.SceneInteractor
+import com.android.systemui.scene.shared.flag.SceneContainerFlag
+import com.android.systemui.scene.shared.model.Scenes
 import com.android.systemui.statusbar.policy.KeyguardStateController
 import dagger.Lazy
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 
 private const val TAG = "UdfpsControllerOverlay"
 
@@ -94,13 +97,29 @@ constructor(
     private val powerInteractor: PowerInteractor,
     private val brightnessMirrorShowingInteractor: BrightnessMirrorShowingInteractor,
     @Application private val scope: CoroutineScope,
+    sceneInteractor: Lazy<SceneInteractor>,
 ) {
-    private val currentStateUpdatedToOffAodOrDozing: Flow<Unit> =
-        transitionInteractor.currentKeyguardState
-            .filter {
-                it == KeyguardState.OFF || it == KeyguardState.AOD || it == KeyguardState.DOZING
-            }
-            .map {} // map to Unit
+    private val currentStateUpdatedToOffAodDozingOrDreaming: Flow<Unit> =
+        merge(
+            transitionInteractor.currentKeyguardState
+                .filter {
+                    it == KeyguardState.OFF ||
+                        it == KeyguardState.AOD ||
+                        it == KeyguardState.DOZING ||
+                        it == KeyguardState.DREAMING
+                }
+                .map {}, // map to Unit
+            if (SceneContainerFlag.isEnabled) {
+                sceneInteractor
+                    .get()
+                    .currentScene
+                    .filter { it == Scenes.Dream }
+                    .map {} // map to Unit
+            } else {
+                emptyFlow()
+            },
+        )
+
     private var listenForCurrentKeyguardState: Job? = null
     private var addViewRunnable: Runnable? = null
     private var overlayTouchView: UdfpsTouchOverlay? = null
@@ -167,9 +186,7 @@ constructor(
     }
 
     private fun setHandleTouchesDisregardingUdfpsOverlayViewLifecycle(): Boolean {
-        return requestReason == REASON_AUTH_KEYGUARD &&
-            com.android.systemui.Flags.newDozingKeyguardStates() &&
-            overlayParams.sensorType == TYPE_UDFPS_ULTRASONIC
+        return overlayParams.sensorType == TYPE_UDFPS_ULTRASONIC
     }
 
     /** Show the overlay or return false and do nothing if it is already showing. */
@@ -179,14 +196,25 @@ constructor(
             overlayParams = params
             overlayAttachStateListener = attachListener
             sensorBounds = Rect(params.sensorBounds)
-            val isSetHandleTouchesOutsideOfUdfpsViewLifecycle =
-                setHandleTouchesDisregardingUdfpsOverlayViewLifecycle()
-            if (isSetHandleTouchesOutsideOfUdfpsViewLifecycle) {
-                // doesn't use the overlayTouchView to handle the lifecycle of forwarding
+            var udfpsTouchForwarder: UdfpsOverlayInteractor? = udfpsOverlayInteractor
+            if (setHandleTouchesDisregardingUdfpsOverlayViewLifecycle()) {
+                // don't use the overlayTouchView to handle the lifecycle of forwarding
                 // shouldHandleTouches to the HAL
-                udfpsOverlayInteractor.updateSetHandleTouchesForKeyguard(
-                    deviceEntryUdfpsTouchOverlayViewModel.get()
-                )
+                udfpsTouchForwarder = null
+                when (requestReason) {
+                    REASON_AUTH_KEYGUARD ->
+                        udfpsOverlayInteractor.setTouchHandlingViewModel(
+                            deviceEntryUdfpsTouchOverlayViewModel.get()
+                        )
+                    REASON_AUTH_BP ->
+                        udfpsOverlayInteractor.setTouchHandlingViewModel(
+                            promptUdfpsTouchOverlayViewModel.get()
+                        )
+                    else ->
+                        udfpsOverlayInteractor.setTouchHandlingViewModel(
+                            defaultUdfpsTouchOverlayViewModel.get()
+                        )
+                }
             }
             try {
                 overlayTouchView =
@@ -207,24 +235,19 @@ constructor(
                                     UdfpsTouchOverlayBinder.bind(
                                         view = this,
                                         viewModel = deviceEntryUdfpsTouchOverlayViewModel.get(),
-                                        udfpsOverlayInteractor =
-                                            if (isSetHandleTouchesOutsideOfUdfpsViewLifecycle) {
-                                                null
-                                            } else {
-                                                udfpsOverlayInteractor
-                                            },
+                                        udfpsOverlayInteractor = udfpsTouchForwarder,
                                     )
                                 REASON_AUTH_BP ->
                                     UdfpsTouchOverlayBinder.bind(
                                         view = this,
                                         viewModel = promptUdfpsTouchOverlayViewModel.get(),
-                                        udfpsOverlayInteractor = udfpsOverlayInteractor,
+                                        udfpsOverlayInteractor = udfpsTouchForwarder,
                                     )
                                 else ->
                                     UdfpsTouchOverlayBinder.bind(
                                         view = this,
                                         viewModel = defaultUdfpsTouchOverlayViewModel.get(),
-                                        udfpsOverlayInteractor = udfpsOverlayInteractor,
+                                        udfpsOverlayInteractor = udfpsTouchForwarder,
                                     )
                             }
                             sensorRect = sensorBounds
@@ -274,7 +297,9 @@ constructor(
         } else {
             listenForCurrentKeyguardState?.cancel()
             listenForCurrentKeyguardState =
-                scope.launch { currentStateUpdatedToOffAodOrDozing.collect { addViewIfPending() } }
+                scope.launch {
+                    currentStateUpdatedToOffAodDozingOrDreaming.collect { addViewIfPending() }
+                }
         }
     }
 
@@ -305,12 +330,7 @@ constructor(
     fun hide(): Boolean {
         val wasShowing = isShowing
         Log.d(TAG, "hideUdfpsControllerOverlay wasShowing=$wasShowing")
-        overlayTouchView?.apply {
-            if (isDisplayConfigured) {
-                unconfigureDisplay()
-            }
-        }
-        udfpsOverlayInteractor.stopSetHandleTouchesForKeyguard()
+<        udfpsOverlayInteractor.stopHandlingTouches()
         udfpsDisplayModeProvider.disable(null)
         udfpsHelper?.removeDimLayer()
         getTouchOverlay()?.apply {

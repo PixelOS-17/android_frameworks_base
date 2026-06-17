@@ -1604,4 +1604,8 @@ public class PackageManagerServiceUtils {
             }
         }
     }
+
+    public static boolean isLoading(float loadingProgress) {
+        return Math.abs(1.0f - loadingProgress) >= 0.00000001f;
+    }
 }
