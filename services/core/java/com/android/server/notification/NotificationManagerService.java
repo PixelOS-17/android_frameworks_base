@@ -197,7 +197,6 @@ import static com.android.server.am.PendingIntentRecord.FLAG_ACTIVITY_SENDER;
 import static com.android.server.am.PendingIntentRecord.FLAG_BROADCAST_SENDER;
 import static com.android.server.am.PendingIntentRecord.FLAG_SERVICE_SENDER;
 import static com.android.server.bitmapoffload.BitmapOffload.BITMAP_SOURCE_NOTIFICATIONS;
-import static com.android.server.notification.Flags.favoritesIncomingCallLights;
 import static com.android.server.notification.Flags.managedServicesConcurrentMultiuser;
 import static com.android.server.notification.NotificationManagerService.NotificationPostEvent.NOTIFICATION_POSTED_CACHED;
 import static com.android.server.policy.PhoneWindowManager.TOAST_WINDOW_ANIM_BUFFER;
@@ -4397,7 +4396,7 @@ public class NotificationManagerService extends SystemService {
 
             // If the display cannot host tasks (such as a display used for mirroring), show the
             // toast on default display instead.
-<            if (DesktopExperienceFlags.ENABLE_DISPLAY_CONTENT_MODE_MANAGEMENT.isTrue()) {
+            if (DesktopExperienceFlags.ENABLE_DISPLAY_CONTENT_MODE_MANAGEMENT.isTrue()) {
                 Display display = mDisplayManager.getDisplay(displayId);
                 if (display != null && !display.canHostTasks()) {
                     if (DBG) {
@@ -7253,7 +7252,7 @@ public class NotificationManagerService extends SystemService {
                         android.Manifest.permission.MANAGE_NOTIFICATIONS,
                         "setNotificationPolicyAccessGrantedForUser");
             }
-<            setNotificationPolicyAccessGrantedForUserInternal(pkg, userId, granted);
+            setNotificationPolicyAccessGrantedForUserInternal(pkg, userId, granted);
         }
 
         @Override
@@ -7530,7 +7529,7 @@ public class NotificationManagerService extends SystemService {
                         android.Manifest.permission.INTERACT_ACROSS_USERS,
                         "setNotificationListenerAccessGrantedForUser for user " + userId);
             }
-<            setNotificationListenerAccessGrantedForUserInternal(listener, userId, granted, userSet);
+            setNotificationListenerAccessGrantedForUserInternal(listener, userId, granted, userSet);
         }
 
         @Override

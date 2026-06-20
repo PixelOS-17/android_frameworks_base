@@ -250,9 +250,12 @@ constructor(
         dismiss()
     }
 
-<    private suspend fun startRecording() {
+    private suspend fun startRecording() {
         val audioSource = recordDetailsParametersViewModel.audioSource
         val target = captureTargetModel?.currentTargetModel?.screenCaptureTarget ?: return
+        val lowQuality = recordDetailsParametersViewModel.lowQuality ?: return
+        val longerDuration = recordDetailsParametersViewModel.longerDuration ?: return
+        val hevc = recordDetailsParametersViewModel.hevc ?: return
         when (target) {
             is ScreenCaptureTarget.Fullscreen -> {
                 val shouldShowTaps = recordDetailsParametersViewModel.shouldShowTaps

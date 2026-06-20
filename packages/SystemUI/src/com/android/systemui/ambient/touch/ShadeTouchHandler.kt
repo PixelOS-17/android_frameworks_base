@@ -159,7 +159,7 @@ constructor(
             // Send touches to central surfaces only when on the glanceable hub while not dreaming.
             // While sending touches where while dreaming will open the shade, the shade
             // while closing if opened then closed in the same gesture.
-<            if (communalSceneInteractor.isIdleOnCommunal.value) {
+            if (communalSceneInteractor.isIdleOnCommunal.value) {
                 surfaces.get().handleExternalShadeWindowTouch(event)
             }
         } else {

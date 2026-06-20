@@ -498,7 +498,7 @@ public class NotificationShadeWindowControllerImpl
     }
 
     private void adjustScreenOrientation(NotificationShadeWindowState state) {
-<        boolean dreamShowingAndRotationAllowed =
+        boolean dreamShowingAndRotationAllowed =
                 dreamsV2()
                         && mContext.getResources()
                                 .getBoolean(

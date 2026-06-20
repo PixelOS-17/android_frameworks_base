@@ -464,7 +464,7 @@ class LaunchParamsUtil {
             }
         }
 
-<        // Select the TDA from the top focused display if possible.
+        // Select the TDA from the top focused display if possible.
         final DisplayContent focusedDisplay =
                 supervisor.mRootWindowContainer.getTopFocusedDisplayContent();
         final TaskDisplayArea defaultTaskDisplayArea;

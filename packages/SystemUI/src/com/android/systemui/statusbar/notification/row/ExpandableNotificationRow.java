@@ -1296,7 +1296,7 @@ public class ExpandableNotificationRow extends ActivatableNotificationView
         boolean wasAboveShelf = isAboveShelf();
         mPinnedStatus = pinnedStatus;
         if (intrinsicHeight != getIntrinsicHeight()) {
-<            notifyHeightChanged(/* needsAnimation= */ false, "ENR.setPinnedStatus");
+            notifyHeightChanged(/* needsAnimation= */ false, "ENR.setPinnedStatus");
         }
 
         // Mark the notification as user-expanded if it was previously expanded while pinned, or

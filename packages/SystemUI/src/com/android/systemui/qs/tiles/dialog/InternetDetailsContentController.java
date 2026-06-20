@@ -306,7 +306,7 @@ public class InternetDetailsContentController implements AccessPointController.A
             LocationController locationController,
             DialogTransitionAnimator dialogTransitionAnimator, WifiStateWorker wifiStateWorker,
             FeatureFlags featureFlags,
-<            ShadeDialogContextInteractor shadeDialogContextInteractor,
+            ShadeDialogContextInteractor shadeDialogContextInteractor,
             UserRepository userRepository
         ) {
         if (DEBUG) {

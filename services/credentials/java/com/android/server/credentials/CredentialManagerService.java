@@ -1247,7 +1247,7 @@ public final class CredentialManagerService
                 Slog.e(TAG, "Failed to clear all credential providers");
             }
 
-<            if (Flags.multiUserFixEnabled()) {
+            if (Flags.multiUserFixEnabled()) {
                 if (!settingsWrapper.putStringForUser(
                         Settings.Secure.CREDENTIAL_SERVICE_PRIMARY,
                         String.join(SETTINGS_DELIMITER, filteredPrimaryProviders),
@@ -1272,7 +1272,7 @@ public final class CredentialManagerService
         }
 
         // Read the credential providers to remove any reference of the removed service.
-<        String rawCredentialProviders;
+        String rawCredentialProviders;
         if (Flags.multiUserFixEnabled()) {
             rawCredentialProviders =
                     settingsWrapper.getStringForUser(
@@ -1286,7 +1286,7 @@ public final class CredentialManagerService
         // Remove any provider services that are same as the one being removed.
         Set<String> filteredCredentialProviders = getStoredProvidersExceptService(
                 rawCredentialProviders, componentName);
-<        if (Flags.multiUserFixEnabled()) {
+        if (Flags.multiUserFixEnabled()) {
             if (!settingsWrapper.putStringForUser(
                     Settings.Secure.CREDENTIAL_SERVICE,
                     String.join(SETTINGS_DELIMITER, filteredCredentialProviders),

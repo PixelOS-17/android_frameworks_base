@@ -16,6 +16,7 @@
 
 package com.android.systemui.screencapture.record.domain.interactor
 
+import androidx.compose.runtime.snapshotFlow
 import com.android.systemui.screencapture.common.ScreenCapture
 import com.android.systemui.screencapture.common.ScreenCaptureScope
 import com.android.systemui.screencapture.record.data.repository.ScreenCaptureRecordParametersRepository
@@ -62,7 +63,35 @@ constructor(
         }
         get() = repository.shouldShowFrontCamera
 
-<    val canChangeAudioSource: StateFlow<Boolean> =
+    val parameters = snapshotFlow {
+        ScreenCaptureRecordParameters(
+            lowQuality = repository.lowQuality,
+            longerDuration = repository.longerDuration,
+            hevc = repository.hevc,
+        )
+    }.stateIn(
+        coroutineScope,
+        SharingStarted.Eagerly,
+        ScreenCaptureRecordParameters(
+            lowQuality = repository.lowQuality,
+            longerDuration = repository.longerDuration,
+            hevc = repository.hevc,
+        )
+    )
+
+    fun setLowQuality(lowQuality: Boolean) {
+        repository.lowQuality = lowQuality
+    }
+
+    fun setLongerDuration(longerDuration: Boolean) {
+        repository.longerDuration = longerDuration
+    }
+
+    fun setHevc(hevc: Boolean) {
+        repository.hevc = hevc
+    }
+
+    val canChangeAudioSource: StateFlow<Boolean> =
         serviceInteractor.status
             .map { it.canChangeAudioSource() }
             .stateIn(
@@ -82,3 +111,9 @@ private fun ScreenRecordingAudioSource.withEnabledMic(): ScreenRecordingAudioSou
 
 private fun ScreenRecordingStatus.canChangeAudioSource(): Boolean =
     this is ScreenRecordingStatus.Stopped
+
+internal data class ScreenCaptureRecordParameters(
+    val lowQuality: Boolean,
+    val longerDuration: Boolean,
+    val hevc: Boolean,
+)

@@ -1051,7 +1051,7 @@ class TransitionController {
             }
 
             final TransitionRequestInfo request = new TransitionRequestInfo(transition.mType,
-<                    startTaskInfo, pipChange, remoteInfo, displayChanges,
+                    startTaskInfo, pipChange, remoteInfo, displayChanges,
                     transition.getRequestedLocation(), userChange, windowingLayerChange,
                     fullscreenRequestChange, transition.getFlags(), transition.getSyncId());
 

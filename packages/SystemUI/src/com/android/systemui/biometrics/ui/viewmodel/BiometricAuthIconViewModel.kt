@@ -342,7 +342,7 @@ constructor(
             }
             .distinctUntilChanged()
 
-<    val udfpsLocationState by
+    val udfpsLocationState by
         deviceEntryUdfpsInteractor.udfpsLocation.hydratedStateOf(initialValue = null)
 
     /** The size of the biometric icon */

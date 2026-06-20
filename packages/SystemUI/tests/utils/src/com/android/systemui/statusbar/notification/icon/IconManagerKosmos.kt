@@ -33,6 +33,6 @@ val Kosmos.iconManager by
             applicationCoroutineScope,
             backgroundCoroutineContext,
             mainCoroutineContext,
-<            applicationContext,
+            applicationContext,
         )
     }

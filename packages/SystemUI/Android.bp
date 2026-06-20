@@ -571,7 +571,7 @@ android_library {
         "kairos",
         "displaylib",
         "aconfig_settings_flags_lib",
-<        "SurfaceEffectsComposeLib",
+        "SurfaceEffectsComposeLib",
         "uilatencystats_flags_core_java_lib",
         "personalcontext_ace_visualizer",
     ],
@@ -782,7 +782,7 @@ android_library {
         "aconfig_settings_flags_lib",
         "kairos",
         "displaylib",
-<        "dynamiccolors",
+        "dynamiccolors",
         "SurfaceEffectsComposeLib",
     ],
 }

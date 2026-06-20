@@ -169,7 +169,7 @@ class StatusOverlayHoverListener(
     configurationController: ConfigurationController,
     private val resources: Resources,
     private val themeFlow: Flow<HoverTheme>,
-<    private val customHeightPx: Int? = null,
+    private val customHeightPx: Int? = null,
 ) : OnHoverListener {
 
     @ColorInt private var darkColor: Int = 0
@@ -214,7 +214,7 @@ class StatusOverlayHoverListener(
                 PaintDrawable(backgroundColor).apply {
                     setCornerRadius(cornerRadius)
                     setBounds(
-<                        /*left = */ 0,
+                        /*left = */ 0,
                         /*top = */ verticalMarginPx,
                         /*right = */ v.width,
                         /*bottom = */ v.height - verticalMarginPx,

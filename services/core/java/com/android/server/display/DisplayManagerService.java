@@ -5728,7 +5728,7 @@ public final class DisplayManagerService extends SystemService {
         public WifiDisplayStatus getWifiDisplayStatus() {
             // This request does not require special permissions.
             // Any app can get information about available wifi displays.
-<            // Except for configure wifi display permission, which is required to get the wifi
+            // Except for configure wifi display permission, which is required to get the wifi
             // display address.
             final int callingUid = Binder.getCallingUid();
             final boolean isDeviceAddressVisible = (callingUid == Process.SYSTEM_UID)

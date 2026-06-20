@@ -216,7 +216,7 @@ private constructor(
         }
 
         startSideContainer = mView.requireViewById(R.id.status_bar_start_side_content)
-<        updateStartSideContainerHoverListener()
+        updateStartSideContainerHoverListener()
         if (statusBarTapToExpandShadeEnabled()) {
             startSideContainer.setOnTouchListener(
                 createClickListener(startSideContainer) { shadeController.animateExpandShade() }

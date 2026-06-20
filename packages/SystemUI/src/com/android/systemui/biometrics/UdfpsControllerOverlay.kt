@@ -330,7 +330,7 @@ constructor(
     fun hide(): Boolean {
         val wasShowing = isShowing
         Log.d(TAG, "hideUdfpsControllerOverlay wasShowing=$wasShowing")
-<        udfpsOverlayInteractor.stopHandlingTouches()
+        udfpsOverlayInteractor.stopHandlingTouches()
         udfpsDisplayModeProvider.disable(null)
         udfpsHelper?.removeDimLayer()
         getTouchOverlay()?.apply {

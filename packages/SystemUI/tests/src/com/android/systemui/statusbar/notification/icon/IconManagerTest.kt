@@ -237,7 +237,7 @@ class IconManagerTest : SysuiTestCase() {
     }
 
     @Test
-<    fun createIcons_forEntry_shelfIconCreatedWithShadeContext() {
+    fun createIcons_forEntry_shelfIconCreatedWithShadeContext() {
         val entry =
             notificationEntry(hasShortcut = true, hasMessageSenderIcon = true, hasLargeIcon = true)
         entry?.let { iconManager.createIcons(it) }
@@ -258,7 +258,7 @@ class IconManagerTest : SysuiTestCase() {
         assertThat(entry.icons.shelfIcon?.context).isNotEqualTo(context)
     }
 
-<    private fun notificationEntry(
+    private fun notificationEntry(
         hasShortcut: Boolean,
         hasMessageSenderIcon: Boolean,
         useMessagingStyle: Boolean = true,

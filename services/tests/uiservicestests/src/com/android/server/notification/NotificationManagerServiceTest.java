@@ -1639,7 +1639,7 @@ public class NotificationManagerServiceTest extends UiServiceTestCase {
             mBinderService.enqueueNotificationWithTag(mPkg, mPkg,
                     "testNoUriGrantsForBadMessagesList",
                     1, notification, mContext.getUserId());
-<            waitForPost();
+            waitForPost();
             fail("should have failed to parse messages");
         } catch (java.lang.ArrayStoreException e) {
             verify(mUgmInternal, never()).checkGrantUriPermission(

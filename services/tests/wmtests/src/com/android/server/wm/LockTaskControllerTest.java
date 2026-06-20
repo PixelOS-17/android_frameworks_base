@@ -327,7 +327,7 @@ public class LockTaskControllerTest {
         mLockTaskController.rebuildSystemLockTaskPinnedMode();
 
         // THEN mSupervisor should not be interacted with
-<        verifyNoInteractions(mSupervisor);
+        verifyNoInteractions(mSupervisor);
     }
 
     @Test
@@ -340,7 +340,7 @@ public class LockTaskControllerTest {
         mLockTaskController.rebuildSystemLockTaskPinnedMode();
 
         // THEN mSupervisor should not be interacted with
-<        verifyNoInteractions(mSupervisor);
+        verifyNoInteractions(mSupervisor);
     }
 
     @Test
@@ -372,7 +372,7 @@ public class LockTaskControllerTest {
         verify(mWindowManager, times(2)).disableKeyguard(any(IBinder.class), anyString(),
                 eq(TEST_USER_ID));
         // THEN the status bar should have been disabled
-<        verify(mStatusBarService, times(2)).disableForUser(eq(STATUS_BAR_MASK_PINNED),
+        verify(mStatusBarService, times(2)).disableForUser(eq(STATUS_BAR_MASK_PINNED),
                 any(IBinder.class), eq(mPackageName), eq(TEST_USER_ID));
         verify(mStatusBarService, times(2)).disable2ForUser(eq(DISABLE2_NONE), any(IBinder.class),
                 eq(mPackageName), eq(TEST_USER_ID));

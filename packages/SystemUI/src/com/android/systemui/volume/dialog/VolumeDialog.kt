@@ -44,7 +44,7 @@ constructor(
     @Application context: Context,
     private val componentFactory: VolumeDialogComponentFactory,
     private val visibilityInteractor: VolumeDialogVisibilityInteractor,
-<    @Assisted private val isVolumeDialogVertical: Boolean,
+    @Assisted private val isVolumeDialogVertical: Boolean,
 ) : ComponentDialog(context, R.style.Theme_SystemUI_Dialog_Volume) {
 
     @AssistedFactory

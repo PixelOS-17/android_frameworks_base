@@ -289,7 +289,7 @@ final class IInputMethodManagerImpl extends IInputMethodManager.Stub {
 
     @NonNull
     @Override
-<    public InputMethodSubtypeSafeList getEnabledInputMethodSubtypeList(String imiId,
+    public InputMethodSubtypeSafeList getEnabledInputMethodSubtypeList(String imiId,
             boolean allowsImplicitlyEnabledSubtypes, @UserIdInt int userId) {
         return mCallback.getEnabledInputMethodSubtypeList(imiId, allowsImplicitlyEnabledSubtypes,
                 userId);

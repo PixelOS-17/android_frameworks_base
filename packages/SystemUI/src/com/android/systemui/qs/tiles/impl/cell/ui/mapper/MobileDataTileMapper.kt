@@ -71,6 +71,6 @@ constructor(
                 if (data.isSimActive && !data.isAirplaneModeEnabled) {
                     add(QSTileState.UserAction.TOGGLE_CLICK)
                 }
-<            }
+            }
         }
 }

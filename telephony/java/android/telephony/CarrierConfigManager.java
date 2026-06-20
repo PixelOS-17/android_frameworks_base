@@ -11551,7 +11551,7 @@ public class CarrierConfigManager {
             "opp_auto_data_switch_policy_int";
 
     /**
-<     * Flag indicating whether or not an incoming video call will be auto rejected and logged
+     * Flag indicating whether or not an incoming video call will be auto rejected and logged
      * since device is in low battery.
      */
     @FlaggedApi(Flags.FLAG_ENABLE_VT_CALL_LOW_BATTERY_CONFIG)

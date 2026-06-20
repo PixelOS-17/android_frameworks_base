@@ -40,7 +40,7 @@ constructor(private val msdlPlayer: MSDLPlayer) {
 
     fun onQuickAffordanceLongPress(isActivated: Boolean) {
         longPressed = true
-<    }
+    }
 
     fun onQuickAffordanceClick() {
         msdlPlayer.playToken(MSDLToken.FAILURE)

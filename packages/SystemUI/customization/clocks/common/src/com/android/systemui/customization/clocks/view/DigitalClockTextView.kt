@@ -201,7 +201,7 @@ abstract class DigitalClockTextView(private val clockCtx: ClockContext) :
         if (super.onTouchEvent(evt)) return true
         if (isDozing) return false
 
-<        if (evt.action == MotionEvent.ACTION_DOWN) {
+        if (evt.action == MotionEvent.ACTION_DOWN) {
             val pt = VPointF(evt.x, evt.y)
             return (parent as? IDigitalClockViewGroup)?.animateFidget(pt, enforceBounds = false)
                 ?: animateFidget(pt, enforceBounds = false)

@@ -1101,7 +1101,7 @@ public class AccessibilityManagerService extends IAccessibilityManager.Stub
         final AccessibilityUserState userState = getCurrentUserStateLocked();
         // Reload the installed services since some services may have different attributes
         // or resolve info (does not support equals), etc. Remove them then to force reload.
-<        userState.mInstalledServicesMap.clear();
+        userState.mInstalledServicesMap.clear();
         if (readConfigurationForUserStateLocked(
                 userState, parsedAccessibilityServiceInfos, parsedAccessibilityShortcutInfos,
                 validA11yTileServices)) {
@@ -2508,7 +2508,7 @@ public class AccessibilityManagerService extends IAccessibilityManager.Stub
         // parse outside of a lock, but after verifying userId
         parsedAccessibilityServiceInfos = parseAccessibilityServiceInfos(userId);
         parsedAccessibilityShortcutInfos = parseAccessibilityShortcutInfos(userId);
-<        List<AccessibilityServiceInfo> installedServices = new ArrayList<>(
+        List<AccessibilityServiceInfo> installedServices = new ArrayList<>(
                 userState.getInstalledServices());
         if (!parsedAccessibilityServiceInfos.equals(installedServices)) {
             userState.buildInstalledServicesMapLocked(parsedAccessibilityServiceInfos);
@@ -6650,7 +6650,7 @@ public class AccessibilityManagerService extends IAccessibilityManager.Stub
                             parsedAccessibilityShortcutInfos,
                             userId
                     );
-<            mManagerService.scheduleUpdatePermittedServices(userId);
+            mManagerService.scheduleUpdatePermittedServices(userId);
             synchronized (mManagerService.getLock()) {
                 if (userId != mManagerService.getCurrentUserIdLocked()) {
                     return;

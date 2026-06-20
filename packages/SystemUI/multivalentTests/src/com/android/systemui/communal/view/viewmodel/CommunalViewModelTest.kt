@@ -1083,7 +1083,7 @@ class CommunalViewModelTest(flags: FlagsParameterization) : SysuiTestCase() {
         }
 
     @Test
-<    fun showBackgroundForEditModeTransition() =
+    fun showBackgroundForEditModeTransition() =
         kosmos.runTest {
             val showBackground by collectLastValue(underTest.showBackgroundForEditModeTransition)
 

@@ -101,7 +101,7 @@ public class ScreenMediaRecorder {
     private final MediaProjectionCaptureTarget mCaptureRegion;
     private final Handler mHandler;
     private final int mDisplayId;
-<    private final AtomicBoolean mIsStarted = new AtomicBoolean();
+    private final AtomicBoolean mIsStarted = new AtomicBoolean();
 
     private Context mContext;
     ScreenMediaRecorderListener mListener;
@@ -200,7 +200,7 @@ public class ScreenMediaRecorder {
         DisplayManager dm = mContext.getSystemService(DisplayManager.class);
         Display display = dm.getDisplay(mDisplayId);
         display.getRealMetrics(metrics);
-<        int refreshRate = (int) display.getRefreshRate();
+        int refreshRate = (int) display.getRefreshRate();
         VideoParameters videoParameters = getSupportedSize(metrics.widthPixels,
                 metrics.heightPixels, refreshRate);
         mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);

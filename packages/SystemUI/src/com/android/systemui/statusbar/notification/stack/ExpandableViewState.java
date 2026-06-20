@@ -219,7 +219,7 @@ public class ExpandableViewState extends ViewState {
                             row.setGroupExpansionChanging(false /* isExpansionChanging */);
                         }
                     };
-<                    if (!FixCollapsingOvershootTiming.isEnabled()) {
+                    if (!FixCollapsingOvershootTiming.isEnabled()) {
                         maxOvershoot = calculateMaxOvershoot(expandableView);
                     }
                 }

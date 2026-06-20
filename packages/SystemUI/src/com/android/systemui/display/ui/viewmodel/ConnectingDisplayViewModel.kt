@@ -134,7 +134,7 @@ constructor(
             .launchIn(scope)
     }
 
-<    private fun PendingDisplay.showConnectionDialog(
+    private fun PendingDisplay.showConnectionDialog(
         showConcurrentDisplayInfo: Boolean,
         isDesktopModeSupported: Boolean,
         isInKioskMode: Boolean,

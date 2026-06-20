@@ -188,7 +188,7 @@ class DeviceEntryFaceAuthRepositoryTest : SysuiTestCase() {
 
     @Before
     fun setup() {
-<        kosmos.uiEventLogger = uiEventLogger
+        kosmos.uiEventLogger = uiEventLogger
 
         fakeUserRepository.setUserInfos(listOf(primaryUser, secondaryUser))
         whenever(authenticationResult.userId).thenReturn(primaryUserId)

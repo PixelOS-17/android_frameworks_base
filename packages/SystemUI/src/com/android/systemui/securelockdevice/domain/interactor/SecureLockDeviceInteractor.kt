@@ -267,7 +267,7 @@ constructor(
     }
 
     /** Strong biometric modalities enrolled and enabled on the device. */
-<    val enrolledStrongBiometricModalities: StateFlow<BiometricModalities> by lazy {
+    val enrolledStrongBiometricModalities: StateFlow<BiometricModalities> by lazy {
         combine(
                 biometricSettingsInteractor.isFingerprintAuthEnrolledAndEnabled,
                 biometricSettingsInteractor.isFaceAuthEnrolledAndEnabled,

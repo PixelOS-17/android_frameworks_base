@@ -359,7 +359,7 @@ constructor(
         val statusIcons = mView.requireViewById<AlphaOptimizedLinearLayout>(R.id.statusIcons)
         SystemStatusIconsLayoutHelper.configurePaddingForNewStatusBarIcons(statusIcons)
 
-<        // Configure the compose battery view
+        // Configure the compose battery view
         val batteryComposeView = createBatteryComposeView()
         mView.requireViewById<ViewGroup>(R.id.hover_system_icons_container).apply {
             addView(batteryComposeView, -1)

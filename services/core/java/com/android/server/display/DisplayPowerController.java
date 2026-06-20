@@ -115,8 +115,6 @@ import com.android.server.display.whitebalance.DisplayWhiteBalanceFactory;
 import com.android.server.display.whitebalance.DisplayWhiteBalanceSettings;
 import com.android.server.policy.WindowManagerPolicy;
 
-import android.provider.Settings;
-
 import java.io.PrintWriter;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -1015,9 +1013,12 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
         mContext.getContentResolver().registerContentObserver(
                 Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS_MODE),
                 false /*notifyForDescendants*/, mSettingsObserver, UserHandle.USER_ALL);
-<        mContext.getContentResolver().registerContentObserver(
+        mContext.getContentResolver().registerContentObserver(
                 Settings.System.getUriFor(Settings.System.SCREEN_BRIGHTNESS_FOR_ALS),
                 /* notifyForDescendants= */ false, mSettingsObserver, UserHandle.USER_ALL);
+        mContext.getContentResolver().registerContentObserver(
+                Settings.System.getUriFor(Settings.System.AUTO_BRIGHTNESS_ONE_SHOT),
+                false /*notifyForDescendants*/, mSettingsObserver, UserHandle.USER_ALL);
         handleBrightnessModeChange();
     }
 
@@ -2379,7 +2380,7 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
         }
     }
 
-<    /**
+    /**
      * API MADE FOR TESTING ONLY. Relies on busy waiting to avoid unnecessary code complexity.
      * Temporarily override brightness mode synchronously waiting for the mode change.
      * @param screenBrightnessModeSetting
@@ -2432,6 +2433,12 @@ final class DisplayPowerController implements AutomaticBrightnessController.Call
 
     public float getScreenBrightnessSetting() {
         return mDisplayBrightnessController.getScreenBrightnessSettingConstrained();
+    }
+
+    private boolean getAutoBrightnessOneShotSetting() {
+        return Settings.System.getIntForUser(
+                mContext.getContentResolver(), Settings.System.AUTO_BRIGHTNESS_ONE_SHOT,
+                0, UserHandle.USER_CURRENT) == 1;
     }
 
     public float getCurrentScreenBrightness() {

@@ -215,7 +215,7 @@ public class RecordingService extends Service implements ScreenMediaRecorderList
                 mAudioSource = ScreenRecordingAudioSource
                         .values()[intent.getIntExtra(EXTRA_AUDIO_SOURCE, 0)];
                 Log.d(getTag(), "recording with audio source " + mAudioSource);
-<                MediaProjectionCaptureTarget captureTarget =
+                MediaProjectionCaptureTarget captureTarget =
                         intent.getParcelableExtra(EXTRA_CAPTURE_TARGET,
                                 MediaProjectionCaptureTarget.class);
 
@@ -578,7 +578,7 @@ public class RecordingService extends Service implements ScreenMediaRecorderList
                 createSaveNotification(savedRecording), currentUser);
     }
 
-<    protected String getTag() {
+    protected String getTag() {
         return TAG;
     }
 

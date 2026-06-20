@@ -134,7 +134,7 @@ internal constructor(
         window = screenshotWindowFactory.create(display)
         context = window.getContext()
 
-<        viewProxy = viewProxyFactory.getProxy(window, display.displayId)
+        viewProxy = viewProxyFactory.getProxy(window, display.displayId)
 
         screenshotHandler.setOnTimeoutRunnable {
             if (LogConfig.DEBUG_UI) {
@@ -415,7 +415,7 @@ internal constructor(
         }
     }
 
-<    private fun onScrollButtonClicked(
+    private fun onScrollButtonClicked(
         owner: UserHandle,
         response: ScrollCaptureResponse,
         originalBitmapUri: Uri,
@@ -568,7 +568,7 @@ internal constructor(
                 screenshot.bitmap,
                 screenshot.userHandle,
                 display.displayId,
-<                screenshot.customSaveUri,
+                screenshot.customSaveUri,
             )
         future.addListener(
             {

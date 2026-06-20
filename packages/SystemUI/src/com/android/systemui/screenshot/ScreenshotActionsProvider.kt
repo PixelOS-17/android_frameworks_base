@@ -134,7 +134,7 @@ constructor(
             }
         }
 
-<        if (screenCaptureRecordFeaturesInteractor.isLargeScreenScreencaptureEnabled) {
+        if (screenCaptureRecordFeaturesInteractor.isLargeScreenScreencaptureEnabled) {
             actionsCallback.provideActionButton(
                 ActionButtonAppearance(
                     AppCompatResources.getDrawable(context, R.drawable.ic_content_copy),

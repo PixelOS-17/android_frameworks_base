@@ -151,7 +151,7 @@ class HomeStatusBarViewBinderImpl @Inject constructor() : HomeStatusBarViewBinde
                     }
                 }
 
-<                launch {
+                launch {
                     viewModel.systemInfoCombinedVis.collect { (baseVis, animState) ->
                         // Broadly speaking, the baseVis controls the view.visibility, and
                         // the animation state uses only alpha to achieve its effect. This

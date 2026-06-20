@@ -919,7 +919,7 @@ class DomainVerificationPackageTest {
 
         // Only "xyz.com" exactly or subdomains should match. "abcxyz.com" should not match.
         assertThat(
-<            service.getOwnersForDomain("abcxyz.com", USER_ID, /*includeUnverifiedOwners=*/false))
+            service.getOwnersForDomain("abcxyz.com", USER_ID, /*includeUnverifiedOwners=*/false))
             .isEmpty()
         assertThat(
             service.getOwnersForDomain("abc.xyz.com", USER_ID, /*includeUnverifiedOwners=*/false))

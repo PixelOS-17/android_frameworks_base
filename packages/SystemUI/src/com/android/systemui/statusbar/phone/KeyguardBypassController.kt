@@ -201,7 +201,7 @@ constructor(
         biometricSourceType: BiometricSourceType,
         isStrongBiometric: Boolean,
     ): Boolean {
-<        if (biometricSourceType == BiometricSourceType.FACE && bypassEnabled) {
+        if (biometricSourceType == BiometricSourceType.FACE && bypassEnabled) {
             val can = canBypass()
             if (!can) {
                 Log.d(

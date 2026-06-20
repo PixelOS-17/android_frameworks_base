@@ -1162,7 +1162,7 @@ public class CentralSurfacesImpl implements CoreStartable, CentralSurfaces {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_CLOSE_SYSTEM_DIALOGS);
         filter.addAction(Intent.ACTION_SCREEN_OFF);
-<        Executor executor;
+        Executor executor;
         if (BroadcastDispatcherCustomExecutor.isEnabled()) {
             executor = mMainExecutor;
         } else {

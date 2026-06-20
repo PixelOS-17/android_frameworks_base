@@ -634,7 +634,7 @@ public class StatusBarManagerService extends IStatusBarService.Stub implements D
             if (!mContext.getResources().getBoolean(R.bool.config_showSysuiShutdown)) {
                 return false;
             }
-<            return runWithStatusBarIfPresent(bar -> bar.showShutdownUi(isReboot, reason));
+            return runWithStatusBarIfPresent(bar -> bar.showShutdownUi(isReboot, reason));
         }
 
         @Override

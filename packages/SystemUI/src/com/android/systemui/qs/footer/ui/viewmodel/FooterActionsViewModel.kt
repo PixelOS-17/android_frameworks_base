@@ -189,7 +189,7 @@ class FooterActionsViewModel(
                 activityStarter,
                 showPowerButton,
                 selectedUserInteractor,
-<            )
+            )
         }
     }
 }

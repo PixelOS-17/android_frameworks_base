@@ -128,7 +128,7 @@ class ScreenshotShelfView(context: Context, attrs: AttributeSet? = null) :
             resources.getInteger(com.android.internal.R.integer.config_navBarInteractionMode) !=
                 NAV_BAR_MODE_GESTURAL
         ) {
-<            val boundingRects =
+            val boundingRects =
                 currentWindowInsets.getBoundingRects(WindowInsets.Type.navigationBars())
             if (boundingRects.isNotEmpty()) {
                 region.op(boundingRects.first(), Region.Op.UNION)

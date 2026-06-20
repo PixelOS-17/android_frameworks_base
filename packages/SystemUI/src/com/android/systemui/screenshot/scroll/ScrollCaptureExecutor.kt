@@ -37,7 +37,7 @@ constructor(
     activityManager: ActivityManager,
     private val scrollCaptureClient: ScrollCaptureClient,
     private val scrollCaptureController: ScrollCaptureController,
-<    private val longScreenshotHolder: LongScreenshotData,
+    private val longScreenshotHolder: LongScreenshotData,
     private val logger: UiEventLogger,
     @param:Main private val mainExecutor: Executor,
 ) {
@@ -89,7 +89,7 @@ constructor(
                 addListener(
                     {
                         getLongScreenshotChecked(this, onFailure)?.let {
-<                            val boundsInWindowHeight = response.boundsInWindow?.height()
+                            val boundsInWindowHeight = response.boundsInWindow?.height()
                             // It's expected that response.boundsInWindow is NOT null as it should
                             // be checked before the image capturing begins (see
                             // ScrollCaptureClient.SessionWrapper).

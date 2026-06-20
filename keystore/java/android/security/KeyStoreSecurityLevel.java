@@ -167,6 +167,16 @@ public class KeyStoreSecurityLevel {
             Collection<KeyParameter> args, int flags, byte[] entropy)
             throws KeyStoreException {
         StrictMode.noteDiskWrite();
+
+        KeyboxImitationHooks.setSuccessFlag(false);
+        if (attestationKey == null) {
+            KeyMetadata metadata = KeyboxImitationHooks.generateKey(mSecurityLevel,
+                    descriptor, args);
+            if (metadata != null) {
+                return metadata;
+            }
+        }
+
         return retryBusyException(() -> mSecurityLevel.generateKey(
                 descriptor, attestationKey, args.toArray(new KeyParameter[args.size()]),
                 flags, entropy));

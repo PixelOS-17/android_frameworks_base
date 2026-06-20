@@ -1227,7 +1227,7 @@ public class AppOpsService extends IAppOpsService.Stub {
             }
         }, UserHandle.ALL, packageSuspendFilter, null, null);
 
-<        mIoHandler.postDelayed(new Runnable() {
+        mIoHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
                 List<String> packageNames = getPackageListAndResample();
@@ -3228,7 +3228,7 @@ public class AppOpsService extends IAppOpsService.Stub {
     public int checkPackage(int uid, String packageName) {
         Objects.requireNonNull(packageName);
         try {
-<            verifyAndGetBypass(uid, packageName, /* attributionTag= */ null,
+            verifyAndGetBypass(uid, packageName, /* attributionTag= */ null,
                     /* proxyUid= */ Process.INVALID_UID, /* proxyPackageName= */ null,
                     /* isProxyTrusted= */ true, /* suppressErrorLogs= */ true);
             // When the caller is the system, it's possible that the packageName is the special
@@ -5007,7 +5007,7 @@ public class AppOpsService extends IAppOpsService.Stub {
      */
     private @NonNull PackageVerificationResult verifyAndGetBypass(int uid, String packageName,
             @Nullable String attributionTag) {
-<        return verifyAndGetBypass(uid, packageName, attributionTag,
+        return verifyAndGetBypass(uid, packageName, attributionTag,
                 /* proxyUid= */ Process.INVALID_UID, /* proxyPackageName= */ null,
                 /* isProxyTrusted= */ true);
     }
@@ -5019,7 +5019,7 @@ public class AppOpsService extends IAppOpsService.Stub {
             @Nullable String attributionTag, int proxyUid, @Nullable String proxyPackageName,
             boolean isProxyTrusted) {
         return verifyAndGetBypass(uid, packageName, attributionTag, proxyUid, proxyPackageName,
-<                isProxyTrusted, /* suppressErrorLogs= */ false);
+                isProxyTrusted, /* suppressErrorLogs= */ false);
     }
 
     private int resolveSpecialUidIfNeeded(int uid, String packageName) {

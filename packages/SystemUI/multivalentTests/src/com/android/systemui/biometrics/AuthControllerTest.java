@@ -144,7 +144,7 @@ public class AuthControllerTest extends SysuiTestCase {
     private final FakeFocusedDisplayRepository mFocusedDisplayRepository =
             mKosmos.getFakeFocusedDisplayRepository();
 
-<    @Mock private PackageManager mPackageManager;
+    @Mock private PackageManager mPackageManager;
     @Mock private PromptFallbackViewModel.Factory mFallbackViewModelFactory;
     @Mock private IBiometricSysuiReceiver mReceiver;
     @Mock private IBiometricContextListener mContextListener;
@@ -223,7 +223,7 @@ public class AuthControllerTest extends SysuiTestCase {
         when(mFingerprintManager.isHardwareDetected()).thenReturn(true);
         when(mFaceManager.isHardwareDetected()).thenReturn(true);
 
-<        final List<ComponentInfoInternal> fpComponentInfo =
+        final List<ComponentInfoInternal> fpComponentInfo =
                 List.of(
                         new ComponentInfoInternal(
                                 "faceSensor" /* componentId */,
@@ -998,7 +998,7 @@ public class AuthControllerTest extends SysuiTestCase {
                 .getValue()
                 .onKeyguardLockedStateChanged(true /* isKeyguardLocked */);
 
-<        verify(mReceiver)
+        verify(mReceiver)
                 .onDialogDismissed(
                         eq(BiometricPrompt.DISMISSED_REASON_USER_CANCEL),
                         eq(null) /* credentialAttestation */);
@@ -1327,7 +1327,7 @@ public class AuthControllerTest extends SysuiTestCase {
         private int mBuildCount = 0;
 
         TestableAuthController(Context context) {
-<            super(
+            super(
                     context,
                     null /* applicationCoroutineScope */,
                     mExecution,

@@ -531,7 +531,7 @@ constructor(
             }
 
             override fun onAuthenticationSucceeded(result: FaceManager.AuthenticationResult) {
-<                _isCurrentUserAuthenticated.value = result.userId == currentUserId
+                _isCurrentUserAuthenticated.value = result.userId == currentUserId
                 _authenticationStatus.value = SuccessFaceAuthenticationStatus(result)
                 faceAuthLogger.faceAuthSuccess(result)
                 onFaceAuthRequestCompleted()

@@ -145,7 +145,7 @@ fun SecureLockDeviceContent(
             )
         }
 
-<        val hasUdfps: Boolean = viewModel.iconViewModel.hasUdfpsState
+        val hasUdfps: Boolean = viewModel.iconViewModel.hasUdfpsState
         val iconSize: Pair<Int, Int> = viewModel.iconViewModel.iconSizeState
         var globalCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
 

@@ -200,7 +200,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
 
     private static final boolean SHOW_SILENT_TOGGLE = true;
 
-<    // See NotificationManagerService#scheduleDurationReachedLocked
+    // See NotificationManagerService#scheduleDurationReachedLocked
     private static final long TOAST_FADE_TIME = 333;
     // See NotificationManagerService.LONG_DELAY
     private static final int TOAST_VISIBLE_TIME = 3500;
@@ -289,7 +289,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
     @VisibleForTesting
     final ArrayList<Action> mOverflowItems = new ArrayList<>();
     @VisibleForTesting
-<    final ArrayList<Action> mPowerItems = new ArrayList<>();
+    final ArrayList<Action> mPowerItems = new ArrayList<>();
 
     @NonNull
     private Handler mMainHandler;
@@ -301,7 +301,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
     private Action mSilentModeAction;
     private ToggleAction mAirplaneModeOn;
 
-<    private MyAdapter mAdapter;
+    private MyAdapter mAdapter;
     private MyOverflowAdapter mOverflowAdapter;
     private MyPowerOptionsAdapter mPowerAdapter;
 
@@ -678,7 +678,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
     }
 
     @VisibleForTesting
-<    void createActionItems() {
+    void createActionItems() {
         // Simple toggle style if there's no vibrator, otherwise use a tri-state
         if (!mHasVibrator) {
             mSilentModeAction = new SilentModeToggleAction();
@@ -879,7 +879,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
                 mAdapter,
                 mOverflowAdapter,
                 mPowerAdapter,
-<                mStatusBarWindowControllerStore.forDisplay(context.getDisplayId()),
+                mStatusBarWindowControllerStore.forDisplay(context.getDisplayId()),
                 mKeyguardShowing,
                 this::onRefresh,
                 () -> rescheduleBurnInTimeout(mGlobalActionDialogTimeout)
@@ -991,7 +991,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
                 return false;
             }
             mUiEventLogger.log(GlobalActionsEvent.GA_SHUTDOWN_LONG_PRESS);
-<            if (!mUserManager.hasUserRestrictionForUser(UserManager.DISALLOW_SAFE_BOOT,
+            if (!mUserManager.hasUserRestrictionForUser(UserManager.DISALLOW_SAFE_BOOT,
                     mUserTracker.getUserHandle())) {
                 mWindowManagerFuncs.reboot(true);
                 return true;
@@ -1127,7 +1127,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
                 return false;
             }
             mUiEventLogger.log(GlobalActionsEvent.GA_REBOOT_LONG_PRESS);
-<            if (!mUserManager.hasUserRestrictionForUser(UserManager.DISALLOW_SAFE_BOOT,
+            if (!mUserManager.hasUserRestrictionForUser(UserManager.DISALLOW_SAFE_BOOT,
                     mUserTracker.getUserHandle())) {
                 mWindowManagerFuncs.reboot(true);
                 return true;
@@ -1900,7 +1900,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
         public void onClickItem(int position) {
             Action item = mAdapter.getItem(position);
             if (!(item instanceof SilentModeTriStateAction)) {
-<                if (mDelegate != null) {
+                if (mDelegate != null) {
                     // don't dismiss the dialog if we're opening the power options menu
                     if (!(item instanceof PowerOptionsAction)) {
                         // Usually clicking an item shuts down the phone, locks, or starts an
@@ -1990,7 +1990,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
         private void onClickItem(int position) {
             Action item = getItem(position);
             if (!(item instanceof SilentModeTriStateAction)) {
-<                if (mDelegate != null) {
+                if (mDelegate != null) {
                     // Usually clicking an item shuts down the phone, locks, or starts an activity.
                     // We don't want to animate back into the power button when that happens, so we
                     // disable the dialog animation before dismissing.
@@ -2612,7 +2612,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
 
     private final TelephonyCallback.ServiceStateListener mPhoneStateListener =
             new TelephonyCallback.ServiceStateListener() {
-<                @Override
+                @Override
                 public void onServiceStateChanged(@NonNull ServiceState serviceState) {
                     if (!mHasTelephonyCalling) return;
                     if (mAirplaneModeOn == null) {
@@ -2709,7 +2709,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
     public static final class ActionsDialogLiteDelegate implements DialogDelegate<SystemUIDialog>,
             ColorExtractor.OnColorsChangedListener {
 
-<        @NonNull
+        @NonNull
         private final Context mContext;
         @NonNull
         private final MyAdapter mAdapter;
@@ -2818,7 +2818,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
                     }
                 };
 
-<        @AssistedInject
+        @AssistedInject
         ActionsDialogLiteDelegate(
                 @Assisted @NonNull Context context,
                 @Assisted @NonNull MyAdapter adapter,
@@ -2845,7 +2845,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
             mAdapter = adapter;
             mOverflowAdapter = overflowAdapter;
             mPowerOptionsAdapter = powerAdapter;
-<            mStatusBarWindowController = statusBarWindowController;
+            mStatusBarWindowController = statusBarWindowController;
             mKeyguardShowing = keyguardShowing;
             mOnRefreshCallback = onRefreshCallback;
             mRescheduleBurnInTimeout = rescheduleBurnInTimeout;
@@ -2942,7 +2942,7 @@ public class GlobalActionsDialogLite implements DialogInterface.OnDismissListene
             mPowerOptionsDialog.show();
         }
 
-<        private void showPowerOverflowMenu(@NonNull SystemUIDialog dialog) {
+        private void showPowerOverflowMenu(@NonNull SystemUIDialog dialog) {
             mOverflowPopup = createPowerOverflowPopup(dialog);
             mOverflowPopup.show();
         }

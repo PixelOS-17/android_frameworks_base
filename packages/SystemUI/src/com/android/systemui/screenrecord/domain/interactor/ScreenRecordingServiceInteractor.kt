@@ -54,7 +54,7 @@ constructor(private val repository: ScreenRecordingServiceRepository) {
         repository.stopRecording(reason)
     }
 
-<    /** Updates shouldShowTaps if there is an ongoing recording */
+    /** Updates shouldShowTaps if there is an ongoing recording */
     fun updateShouldShowTaps(shouldShowTaps: Boolean) {
         repository.updateParameters { copy(shouldShowTaps = shouldShowTaps) }
     }

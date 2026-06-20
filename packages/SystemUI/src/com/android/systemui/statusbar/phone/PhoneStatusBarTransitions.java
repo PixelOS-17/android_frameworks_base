@@ -36,7 +36,7 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
 
     private boolean mIsHeadsUp;
 
-<    private View mStartSide, mStatusIcons;
+    private View mStartSide, mStatusIcons;
     private Animator mCurrentAnimation;
 
     /**
@@ -115,7 +115,7 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
             AnimatorSet anims = new AnimatorSet();
             anims.playTogether(
                     animateTransitionTo(mStartSide, newStartSideAlpha),
-<                    animateTransitionTo(mStatusIcons, newStatusIconsAlpha)
+                    animateTransitionTo(mStatusIcons, newStatusIconsAlpha)
                     );
             if (isLightsOut(mode)) {
                 anims.setDuration(LIGHTS_OUT_DURATION);
@@ -125,6 +125,6 @@ public final class PhoneStatusBarTransitions extends BarTransitions {
         } else {
             mStartSide.setAlpha(newStartSideAlpha);
             mStatusIcons.setAlpha(newStatusIconsAlpha);
-<        }
+        }
     }
 }

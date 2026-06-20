@@ -132,7 +132,7 @@ public class BookStyleDeviceStatePolicy extends DeviceStatePolicy implements
                                 provider.hasNoConnectedExternalDisplay()),
                 createConfig(getRearDisplayOuterDefaultState(),
                         /* activeStatePredicate= */ NOT_ALLOWED,
-<                        /* availabilityPredicate= */ provider ->
+                        /* availabilityPredicate= */ provider ->
                                 provider.hasNoConnectedExternalDisplay())
         };
     }

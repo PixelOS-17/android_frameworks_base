@@ -306,7 +306,7 @@ public final class WMShell implements
                         // No op.
                     }
                 }, mSysUiMainExecutor);
-<        pip.addOnIsInPipStateChangedListener(mSysUiMainExecutor, isInPip -> {
+        pip.addOnIsInPipStateChangedListener(mSysUiMainExecutor, isInPip -> {
             if (!isInPip) {
                 Log.d(TAG, "Reset disable_gesture_pip_animating on pip exit");
                 mSysUiState.setFlag(SYSUI_STATE_DISABLE_GESTURE_PIP_ANIMATING, false)

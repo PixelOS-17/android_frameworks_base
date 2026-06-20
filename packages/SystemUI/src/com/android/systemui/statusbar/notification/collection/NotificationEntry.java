@@ -486,7 +486,7 @@ public final class NotificationEntry extends ListEntry {
     }
 
     public boolean isBundled() {
-<        if (getRanking() == null) {
+        if (getRanking() == null) {
             Slog.wtfQuiet(TAG, "getRanking() is null " + getKey());
             return false;
         }

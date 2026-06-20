@@ -65,7 +65,7 @@ public class ProtectedPackages {
 
     @Nullable
     @GuardedBy("this")
-<    private synchronized boolean isDevicePolicyManagementPackage(int userId, String packageName) {
+    private synchronized boolean isDevicePolicyManagementPackage(int userId, String packageName) {
         if (packageName == null) {
             return false;
         }
@@ -133,7 +133,7 @@ public class ProtectedPackages {
                 || isOwnerProtectedPackage(userId, packageName)) {
             return true;
         }
-<        if (isSupervisionPackage(userId, packageName)) {
+        if (isSupervisionPackage(userId, packageName)) {
             return true;
         }
         return false;

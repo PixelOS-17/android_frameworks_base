@@ -5736,7 +5736,7 @@ class DisplayContent extends RootDisplayArea implements WindowManagerPolicy.Disp
      * @return A {@code LayerCaptureArgs} object representing the entire surface area of the
      * windowing layer.
      */
-<    LayerCaptureArgs getWindowingLayerCaptureArgs(
+    LayerCaptureArgs getWindowingLayerCaptureArgs(
             @Nullable ToBooleanFunction<WindowState> predicate) {
         if (!mWmService.mPolicy.isScreenOn(mDisplayId)) {
             if (DEBUG_SCREENSHOT) {

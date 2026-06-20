@@ -161,7 +161,7 @@ class FlexClockViewGroup(clockCtx: FlexClockContext) :
             }
         }
 
-<        children.forEach { it.animateFidget(pt, enforceBounds = false) }
+        children.forEach { it.animateFidget(pt, enforceBounds = false) }
         return true
     }
 

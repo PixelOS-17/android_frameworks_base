@@ -96,7 +96,7 @@ class ActionButtonsTest {
             )
         }
 
-<        val actionButtonNode = composeTestRule.onNodeWithText("Open")
+        val actionButtonNode = composeTestRule.onNodeWithText("Open")
 
         // Perform touches from top to bottom of the action button
         actionButtonNode.performTouchInput { click(topCenter) }

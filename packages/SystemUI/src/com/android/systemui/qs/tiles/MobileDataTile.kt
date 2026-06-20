@@ -103,7 +103,7 @@ constructor(
     }
 
     override fun handleSecondaryClick(expandable: Expandable?) {
-<        lifecycle.coroutineScope.launch { userActionInteractor.handleSecondaryClick(expandable) }
+        lifecycle.coroutineScope.launch { userActionInteractor.handleSecondaryClick(expandable) }
     }
 
     override fun getLongClickIntent(): Intent = userActionInteractor.longClickIntent

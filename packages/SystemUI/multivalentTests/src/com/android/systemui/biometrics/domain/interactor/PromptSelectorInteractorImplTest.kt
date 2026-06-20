@@ -620,7 +620,7 @@ class PromptSelectorInteractorImplTest : SysuiTestCase() {
             isLandscape = false,
         )
 
-<        if (kind == PromptKind.Password) {
+        if (kind == PromptKind.Password) {
             assertThat(credentialKind).isEqualTo(PromptKind.Password)
         } else if (kind == PromptKind.Pin) {
             assertThat(credentialKind).isEqualTo(PromptKind.Pin)

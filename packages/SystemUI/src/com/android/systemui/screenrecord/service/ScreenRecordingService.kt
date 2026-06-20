@@ -216,7 +216,7 @@ open class ScreenRecordingService : ComponentService() {
             recordingContext?.stopRecording(reason)
         }
 
-<        override fun updateParameters(parameters: ScreenRecordingParameters) {
+        override fun updateParameters(parameters: ScreenRecordingParameters) {
             screenRecordingPreferenceRepository.setShouldShowTaps(parameters.shouldShowTaps)
             if (parameters.shouldShowSeconds) {
                 screenRecordingPreferenceRepository.setShouldShowSeconds(
@@ -249,9 +249,9 @@ open class ScreenRecordingService : ComponentService() {
                             parameters.captureTarget,
                             parameters.displayId,
                             screenMediaRecorderListener,
-                            lowQuality,
-                            longerDuration,
-                            hevc,
+                            parameters.lowQuality,
+                            parameters.longerDuration,
+                            parameters.hevc,
                         ),
                 )
             context.startRecording()

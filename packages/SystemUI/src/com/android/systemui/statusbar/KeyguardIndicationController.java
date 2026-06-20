@@ -1878,7 +1878,7 @@ public class KeyguardIndicationController {
                     }
                     mDozing = dozing;
 
-<                    if (mDozing) {
+                    if (mDozing) {
                         hideBiometricMessage();
                     }
                     updateDeviceEntryIndication(false);

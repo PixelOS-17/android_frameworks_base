@@ -2601,7 +2601,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         initKeyGestures();
         mButtonOverridePermissionChecker = injector.getButtonOverridePermissionChecker();
         mSideFpsEventHandler = new SideFpsEventHandler(mContext, mHandler, mPowerManager);
-<        mInteractiveDozeEnabled =
+        mInteractiveDozeEnabled =
                 interactiveDozeExperience()
                         && mContext.getResources().getBoolean(
                                 com.android.internal.R.bool.config_enableInteractiveDoze);

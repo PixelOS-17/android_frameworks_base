@@ -162,7 +162,7 @@ constructor(
             sbIcon.scaleType = ImageView.ScaleType.CENTER_INSIDE
 
             // Construct the shelf icon view.
-<            val shelfIcon = iconBuilder.createIconView(entry, shadeContext)
+            val shelfIcon = iconBuilder.createIconView(entry, shadeContext)
             shelfIcon.scaleType = ImageView.ScaleType.CENTER_INSIDE
             shelfIcon.visibility = View.INVISIBLE
 
@@ -273,7 +273,7 @@ constructor(
             sbIcon.scaleType = ImageView.ScaleType.CENTER_INSIDE
 
             // Construct the shelf icon view.
-<            val shelfIcon = iconBuilder.createIconView(entry, context)
+            val shelfIcon = iconBuilder.createIconView(entry, context)
             shelfIcon.scaleType = ImageView.ScaleType.CENTER_INSIDE
             shelfIcon.visibility = View.INVISIBLE
 

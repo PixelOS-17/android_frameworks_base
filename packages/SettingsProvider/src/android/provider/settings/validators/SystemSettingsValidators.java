@@ -285,8 +285,56 @@ public class SystemSettingsValidators {
                 System.CV_PREFERRED_INTENSITY,
                 new InclusiveFloatRangeValidator(
                         CV_PREFERRED_INTENSITY_MIN, CV_PREFERRED_INTENSITY_MAX));
-VALIDATORS.put(
+        VALIDATORS.put(
                 System.ACCESSIBILITY_FORCE_INVERT_COLOR_OVERRIDE_PACKAGES_TO_DISABLE,
                 new PackageNameListValidator(","));
+        VALIDATORS.put(System.ACCELEROMETER_ROTATION_ANGLES, NON_NEGATIVE_INTEGER_VALIDATOR);
+        VALIDATORS.put(System.DISPLAY_TEMPERATURE_DAY, new InclusiveIntegerRangeValidator(0, 100000));
+        VALIDATORS.put(System.DISPLAY_TEMPERATURE_NIGHT, new InclusiveIntegerRangeValidator(0, 100000));
+        VALIDATORS.put(System.DISPLAY_TEMPERATURE_MODE, new InclusiveIntegerRangeValidator(0, 4));
+        VALIDATORS.put(System.DISPLAY_AUTO_OUTDOOR_MODE, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.DISPLAY_READING_MODE, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.DISPLAY_CABC, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.DISPLAY_COLOR_ENHANCE, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.DISPLAY_AUTO_CONTRAST, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.DISPLAY_COLOR_ADJUSTMENT, new Validator() {
+            @Override
+            public boolean validate(String value) {
+                String[] colorAdjustment = null;
+                if (value != null) {
+                    colorAdjustment = value.split(" ");
+                }
+                if (colorAdjustment != null && colorAdjustment.length != 3) {
+                    return false;
+                }
+                final Validator floatValidator = new InclusiveFloatRangeValidator(0, 1);
+                return colorAdjustment == null ||
+                        floatValidator.validate(colorAdjustment[0]) &&
+                        floatValidator.validate(colorAdjustment[1]) &&
+                        floatValidator.validate(colorAdjustment[2]);
+            }
+        });
+        VALIDATORS.put(System.DISPLAY_PICTURE_ADJUSTMENT, new Validator() {
+            @Override
+            public boolean validate(String value) {
+                if (TextUtils.isEmpty(value)) {
+                    return true;
+                }
+                final String[] sp = TextUtils.split(value, ",");
+                for (String s : sp) {
+                    final String[] sp2 = TextUtils.split(s, ":");
+                    if (sp2.length != 2) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        });
+        VALIDATORS.put(System.LIVE_DISPLAY_HINTED, new InclusiveIntegerRangeValidator(-3, 1));
+        VALIDATORS.put(System.DISPLAY_ANTI_FLICKER, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.HIGH_TOUCH_POLLING_RATE_ENABLE, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.HIGH_TOUCH_SENSITIVITY_ENABLE, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.AUTO_BRIGHTNESS_ONE_SHOT, BOOLEAN_VALIDATOR);
+        VALIDATORS.put(System.ADVANCED_REBOOT, BOOLEAN_VALIDATOR);
     }
 }

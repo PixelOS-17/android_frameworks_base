@@ -1680,7 +1680,7 @@ public final class InputMethodManagerService implements IInputMethodManagerImpl.
                     newSettings.getEnabledInputMethodList());
         }
 
-<        ProtoLog.i(IMMS_WITH_LOGCAT, "Switching user stage 3/3. newUserId=%d selectedImeId=%s",
+        ProtoLog.i(IMMS_WITH_LOGCAT, "Switching user stage 3/3. newUserId=%d selectedImeId=%s",
                 newUserId, newSelectedImeId);
 
         if (mIsInteractive && clientToBeReset != null) {
@@ -1737,7 +1737,7 @@ public final class InputMethodManagerService implements IInputMethodManagerImpl.
             ProtoLog.v(IMMS_DEBUG, "--- systemReady");
             if (!mSystemReady) {
                 mSystemReady = true;
-<                mStatusBarManagerInternal =
+                mStatusBarManagerInternal =
                         LocalServices.getService(StatusBarManagerInternal.class);
                 hideStatusBarIconLocked(mCurrentImeUserId);
                 final var bindingController = getInputMethodBindingController(mCurrentImeUserId);

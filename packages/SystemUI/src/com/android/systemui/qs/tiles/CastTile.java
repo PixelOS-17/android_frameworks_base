@@ -372,7 +372,7 @@ public class CastTile extends QSTileImpl<BooleanState> {
     }
 
     private boolean canCastToNetwork() {
-<         if (Flags.qsCastTileSkipWifiCheck()) {
+         if (Flags.qsCastTileSkipWifiCheck()) {
             return true;
         } else {
             return mCastTransportAllowed || mHotspotConnected;

@@ -70,7 +70,7 @@ constructor(
         combine(
             wifiInteractor.wifiToggleState,
             wifiInteractor.isEnabled,
-<            wifiInteractor.wifiNetwork,
+            wifiInteractor.wifiNetwork,
             notConnectedDescriptionFlow,
         ) { toggleState, isEnabled, wifiNetwork, notConnectedDescription ->
             if (toggleState == WifiToggleState.Pausing) {
@@ -92,7 +92,7 @@ constructor(
                 )
             }
 
-<            val wifiIcon = WifiIcon.fromModel(wifiNetwork, context, showHotspotInfo = true)
+            val wifiIcon = WifiIcon.fromModel(wifiNetwork, context, showHotspotInfo = true)
             if (wifiNetwork is WifiNetworkModel.Active && wifiIcon is WifiIcon.Visible) {
                 val secondary = removeDoubleQuotes(wifiNetwork.ssid)
                 WifiTileModel.Active(

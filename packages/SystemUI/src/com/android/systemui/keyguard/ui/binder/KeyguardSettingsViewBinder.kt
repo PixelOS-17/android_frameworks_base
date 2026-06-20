@@ -62,7 +62,7 @@ object KeyguardSettingsViewBinder {
 
                 repeatOnLifecycle(Lifecycle.State.STARTED) {
                     launch("$TAG#viewModel.isVisible") {
-<                        combine(
+                        combine(
                                 viewModel.isVisible.distinctUntilChanged(),
                                 viewModel.shouldAddClickListenerForA11y,
                                 ::Pair,

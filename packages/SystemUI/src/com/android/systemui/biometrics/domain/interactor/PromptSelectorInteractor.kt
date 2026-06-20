@@ -180,7 +180,7 @@ constructor(
                             credentialInteractor.getCredentialOwnerOrSelfId(userId),
                     ),
                 operationInfo = BiometricOperationInfo(gatekeeperChallenge = challenge),
-<                modalities = modalities,
+                modalities = modalities,
                 opPackageName = opPackageName,
             )
         }

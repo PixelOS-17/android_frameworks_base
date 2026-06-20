@@ -4175,7 +4175,7 @@ public class WindowManagerService extends IWindowManager.Stub
                 confirm);
     }
 
-<    /**
+    /**
      * Called when a new user is about to start.
      */
     public void prepareUserStart(@UserIdInt int newUserId) {
@@ -4237,7 +4237,7 @@ public class WindowManagerService extends IWindowManager.Stub
                         ? forcedDensity : displayContent.getInitialDisplayDensity();
                 displayContent.setForcedDensity(targetDensity, UserHandle.USER_CURRENT);
 
-<                mRoot.forAllDisplays(display -> {
+                mRoot.forAllDisplays(display -> {
                     mDisplayWindowSettings.applySettingsToDisplayLocked(display);
                     display.reconfigureDisplayLocked();
 
@@ -4746,7 +4746,7 @@ public class WindowManagerService extends IWindowManager.Stub
                             + " display state="
                             + Display.stateToString(displayContent.getDisplayInfo().state));
                 }
-<                captureArgs =
+                captureArgs =
                         displayContent.getWindowingLayerCaptureArgs(predicate);
             }
         }
