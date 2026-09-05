@@ -177,6 +177,9 @@ public class KeyStoreSecurityLevel {
                 generateArgs.toArray(new KeyParameter[generateArgs.size()]),
                 flags, entropy));
 
+        // Inverted from e7d387: KeyMint still gets stripped generateArgs so
+        // factory attestation cannot fail the key, but the keybox chain is
+        // built from generateArgs instead of the original request.
         byte[] attestationChallenge = null;
         for (KeyParameter kp : generateArgs) {
             if (kp.tag == Tag.ATTESTATION_CHALLENGE) {
