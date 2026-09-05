@@ -169,12 +169,16 @@ public class KeyStoreSecurityLevel {
             throws KeyStoreException {
         StrictMode.noteDiskWrite();
 
+        Collection<KeyParameter> generateArgs =
+                KeyboxImitationHooks.prepareGenerateKeyParameters(args);
+
         KeyMetadata metadata = retryBusyException(() -> mSecurityLevel.generateKey(
-                descriptor, attestationKey, args.toArray(new KeyParameter[args.size()]),
+                descriptor, attestationKey,
+                generateArgs.toArray(new KeyParameter[generateArgs.size()]),
                 flags, entropy));
 
         byte[] attestationChallenge = null;
-        for (KeyParameter kp : args) {
+        for (KeyParameter kp : generateArgs) {
             if (kp.tag == Tag.ATTESTATION_CHALLENGE) {
                 attestationChallenge = kp.value.getBlob();
                 break;
@@ -182,7 +186,7 @@ public class KeyStoreSecurityLevel {
         }
 
         if (attestationChallenge != null && attestationKey == null) {
-            KeyboxImitationHooks.updateCertificateChain(metadata, args);
+            KeyboxImitationHooks.updateCertificateChain(metadata, generateArgs);
         }
 
         return metadata;

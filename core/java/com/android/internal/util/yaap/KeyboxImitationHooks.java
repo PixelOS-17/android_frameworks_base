@@ -5,9 +5,13 @@
  */
 package com.android.internal.util.yaap;
 
+import android.app.ActivityThread;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.security.keymint.Algorithm;
 import android.hardware.security.keymint.KeyParameter;
 import android.hardware.security.keymint.KeyPurpose;
+import android.hardware.security.keymint.Tag;
 import android.os.Binder;
 import android.security.KeyStore2;
 import android.security.KeyStoreException;
@@ -19,6 +23,7 @@ import com.android.internal.util.yaap.KeyboxChainGenerator.KeyGenParameters;
 import java.io.ByteArrayInputStream;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -27,6 +32,35 @@ import java.util.List;
  */
 public class KeyboxImitationHooks {
     private static final String TAG = "KeyboxImitationHooks";
+    private static final String UNIQUE_ID_ATTESTATION_PERMISSION =
+            "android.permission.REQUEST_UNIQUE_ID_ATTESTATION";
+
+    public static Collection<KeyParameter> prepareGenerateKeyParameters(
+            Collection<KeyParameter> args) {
+        if (!KeyProviderManager.isKeyboxAvailable()) {
+            return args;
+        }
+
+        boolean requestedUniqueId = false;
+        for (KeyParameter parameter : args) {
+            if (parameter.tag == Tag.INCLUDE_UNIQUE_ID) {
+                requestedUniqueId = true;
+                break;
+            }
+        }
+        if (!requestedUniqueId || hasUniqueIdAttestationPermission()) {
+            return args;
+        }
+
+        List<KeyParameter> filtered = new ArrayList<>(args.size());
+        for (KeyParameter parameter : args) {
+            if (parameter.tag != Tag.INCLUDE_UNIQUE_ID) {
+                filtered.add(parameter);
+            }
+        }
+        Log.w(TAG, "Stripping INCLUDE_UNIQUE_ID without REQUEST_UNIQUE_ID_ATTESTATION");
+        return filtered;
+    }
 
     public static void updateCertificateChain(KeyMetadata metadata,
             Collection<KeyParameter> args) throws KeyStoreException {
@@ -62,5 +96,21 @@ public class KeyboxImitationHooks {
                 certificates.certificate, certificates.certificateChain);
         metadata.certificate = certificates.certificate;
         metadata.certificateChain = certificates.certificateChain;
+    }
+
+    private static boolean hasUniqueIdAttestationPermission() {
+        try {
+            Context context = ActivityThread.currentApplication();
+            if (context == null) {
+                return false;
+            }
+            return context.checkPermission(
+                    UNIQUE_ID_ATTESTATION_PERMISSION,
+                    Binder.getCallingPid(),
+                    Binder.getCallingUid()) == PackageManager.PERMISSION_GRANTED;
+        } catch (RuntimeException e) {
+            Log.w(TAG, "Unable to check REQUEST_UNIQUE_ID_ATTESTATION", e);
+            return false;
+        }
     }
 }
