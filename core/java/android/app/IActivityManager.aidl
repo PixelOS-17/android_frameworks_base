@@ -1087,4 +1087,13 @@ interface IActivityManager {
      * isolated DroidGuard can see the secure setting.
      */
     String getSpoofPifConfig();
+
+    /** TrickyStore target list. Null or empty means the built-in default. */
+    String getSpoofTrickyStoreTarget();
+
+    /** Imported keybox XML, or null when the user has not imported one. */
+    String getSpoofTrickyStoreKeyBox();
+
+    /** Optional TrickyStore security-patch override. */
+    String getSpoofTrickyStorePatch();
 }
