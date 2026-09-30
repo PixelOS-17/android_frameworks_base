@@ -13956,6 +13956,20 @@ public final class Settings {
         public static final String BERRY_BLACK_THEME = "berry_black_theme";
 
         /**
+         * Spoof Google Photos as the original Pixel XL. 1 on, 0 off. Default on.
+         * @hide
+         */
+        @Readable
+        public static final String PI_PHOTOS_SPOOF = "pi_photos_spoof";
+
+        /**
+         * Spoof Snapchat as the original Pixel XL. 1 on, 0 off. Default off.
+         * @hide
+         */
+        @Readable
+        public static final String PI_SNAPCHAT_SPOOF = "pi_snapchat_spoof";
+
+        /**
          * Network traffic indicator mode
          * 0 = Don't show network traffic indicator
          * 1 = Display up-stream traffic only
