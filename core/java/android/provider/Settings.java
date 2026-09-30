@@ -13963,6 +13963,13 @@ public final class Settings {
         public static final String PIF_DATA = "pif_data";
 
         /**
+         * User imported keybox XML.
+         * @hide
+         */
+        @Readable
+        public static final String KEYBOX_DATA = "keybox_data";
+
+        /**
          * Spoof Google Photos as the original Pixel XL. 1 on, 0 off. Default on.
          * @hide
          */
@@ -13975,6 +13982,20 @@ public final class Settings {
          */
         @Readable
         public static final String PI_SNAPCHAT_SPOOF = "pi_snapchat_spoof";
+
+        /**
+         * TrickyStore target list. An empty value uses the built-in package list.
+         * @hide
+         */
+        @Readable
+        public static final String SPOOF_TRICKYSTORE_TARGET = "spoof_trickystore_target";
+
+        /**
+         * Optional TrickyStore security-patch override.
+         * @hide
+         */
+        @Readable
+        public static final String SPOOF_TRICKYSTORE_PATCH = "spoof_trickystore_patch";
 
         /**
          * Network traffic indicator mode

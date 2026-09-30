@@ -37,6 +37,8 @@ import android.security.keystore.KeyProperties;
 import android.security.keystore.KeyProtection;
 import android.security.keystore.SecureKeyImportUnavailableException;
 import android.security.keystore.WrappedKeyEntry;
+import android.security.trickystore.CertificateHacker;
+import android.security.trickystore.TrickyStoreService;
 import android.system.keystore2.AuthenticatorSpec;
 import android.system.keystore2.Authorization;
 import android.system.keystore2.Domain;
@@ -118,6 +120,8 @@ public class AndroidKeyStoreSpi extends KeyStoreSpi {
 
     // Defined in RFC 8410.
     private static final String ED25519_OID = "1.3.101.112";
+
+    private static final ThreadLocal<Boolean> sInHack = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     @Override
     public Key engineGetKey(String alias, char[] password) throws NoSuchAlgorithmException,
@@ -212,7 +216,40 @@ public class AndroidKeyStoreSpi extends KeyStoreSpi {
 
         caList[0] = leaf;
 
-        return caList;
+        return hackCertificateChainIfNeeded(caList);
+    }
+
+    private static Certificate[] hackCertificateChainIfNeeded(Certificate[] chain) {
+        if (chain == null || chain.length == 0) {
+            return chain;
+        }
+        if (sInHack.get()) {
+            return chain;
+        }
+        sInHack.set(Boolean.TRUE);
+        try {
+            TrickyStoreService service = TrickyStoreService.getInstance();
+            if (!service.hasKeyboxes()) {
+                return chain;
+            }
+
+            int callingUid = android.os.Binder.getCallingUid();
+            String[] packages = android.app.ActivityThread.getPackageManager()
+                    .getPackagesForUid(callingUid);
+
+            if (service.needHack(callingUid, packages)) {
+                Certificate[] hackedChain = CertificateHacker.hackCertificateChain(chain);
+                if (hackedChain != null) {
+                    Log.d(TAG, "TrickyStore: Hacked certificate chain for uid=" + callingUid);
+                    return hackedChain;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "TrickyStore: Failed to hack certificate chain", e);
+        } finally {
+            sInHack.set(Boolean.FALSE);
+        }
+        return chain;
     }
 
     @Override
