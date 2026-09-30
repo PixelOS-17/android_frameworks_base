@@ -21288,4 +21288,18 @@ public class ActivityManagerService extends IActivityManager.Stub
         mAnrWarningController.notifyAnrWarning(
                 uid, anrId, errorId, anrType, consumedTimeMs, timeoutMs, description);
     }
+
+    private String readSpoofSecureSetting(String key) {
+        final long token = Binder.clearCallingIdentity();
+        try {
+            return Settings.Secure.getString(mContext.getContentResolver(), key);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
+    }
+
+    @Override
+    public String getSpoofPifConfig() {
+        return readSpoofSecureSetting(Settings.Secure.PIF_DATA);
+    }
 }

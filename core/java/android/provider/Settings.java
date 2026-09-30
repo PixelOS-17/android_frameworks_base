@@ -13956,6 +13956,13 @@ public final class Settings {
         public static final String BERRY_BLACK_THEME = "berry_black_theme";
 
         /**
+         * User imported Play Integrity config, JSON or a prop file.
+         * @hide
+         */
+        @Readable
+        public static final String PIF_DATA = "pif_data";
+
+        /**
          * Spoof Google Photos as the original Pixel XL. 1 on, 0 off. Default on.
          * @hide
          */

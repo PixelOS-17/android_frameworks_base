@@ -1081,4 +1081,10 @@ interface IActivityManager {
      * Unregisters the listener previously registered for ANR warning.
      */
     void unregisterAnrWarningListener(in IAnrWarningCallback callback);
+
+    /**
+     * Play Integrity config for the calling process. Read in system_server so
+     * isolated DroidGuard can see the secure setting.
+     */
+    String getSpoofPifConfig();
 }
