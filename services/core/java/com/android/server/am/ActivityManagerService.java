@@ -21302,4 +21302,23 @@ public class ActivityManagerService extends IActivityManager.Stub
     public String getSpoofPifConfig() {
         return readSpoofSecureSetting(Settings.Secure.PIF_DATA);
     }
+
+    @Override
+    public String getSpoofTrickyStoreTarget() {
+        String target = readSpoofSecureSetting(Settings.Secure.SPOOF_TRICKYSTORE_TARGET);
+        if (target == null || target.isEmpty()) {
+            return android.security.trickystore.TrickyStoreService.DEFAULT_TARGET_LIST;
+        }
+        return target;
+    }
+
+    @Override
+    public String getSpoofTrickyStoreKeyBox() {
+        return readSpoofSecureSetting(Settings.Secure.KEYBOX_DATA);
+    }
+
+    @Override
+    public String getSpoofTrickyStorePatch() {
+        return readSpoofSecureSetting(Settings.Secure.SPOOF_TRICKYSTORE_PATCH);
+    }
 }
