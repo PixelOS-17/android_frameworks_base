@@ -358,6 +358,22 @@ public final class CertificateHacker {
                 new DEROctetString(entry.getValue())));
         }
 
+        boolean hasModuleHash = false;
+        for (int i = 0; i < vector.size(); i++) {
+            ASN1Encodable element = vector.get(i);
+            if (element instanceof ASN1TaggedObject
+                    && ((ASN1TaggedObject) element).getTagNo() == 724) {
+                hasModuleHash = true;
+                break;
+            }
+        }
+        if (!hasModuleHash) {
+            byte[] moduleHash = AttestationUtils.getModuleHash();
+            if (moduleHash != null && moduleHash.length > 0) {
+                vector.add(new DERTaggedObject(true, 724, new DEROctetString(moduleHash)));
+            }
+        }
+
         DERSequence hackedEnforced = new DERSequence(vector);
         originalEncodables[7] = hackedEnforced;
         DERSequence hackedSequence = new DERSequence(originalEncodables);
