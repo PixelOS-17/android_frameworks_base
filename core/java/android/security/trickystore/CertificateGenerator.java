@@ -74,6 +74,7 @@ public final class CertificateGenerator {
         public String ecCurveName;
         public List<Integer> purpose = new ArrayList<>();
         public List<Integer> digest = new ArrayList<>();
+        public List<Integer> padding = new ArrayList<>();
         public List<Integer> rsaOaepMgfDigest = new ArrayList<>();
         public int maxUsageCount = -1;
         public byte[] moduleHash;
@@ -235,16 +236,30 @@ public final class CertificateGenerator {
             }
             teeEnforced.add(new DERTaggedObject(true, 5, new DERSet(digests)));
 
-            // Tag 203 = RSA_OAEP_MGF_DIGEST (KeyMint 3+)
-            if (params.algorithm == 1 && !params.rsaOaepMgfDigest.isEmpty()) {
-                ASN1Integer[] mgfDigests = new ASN1Integer[params.rsaOaepMgfDigest.size()];
-                for (int i = 0; i < params.rsaOaepMgfDigest.size(); i++) {
-                    mgfDigests[i] = new ASN1Integer(params.rsaOaepMgfDigest.get(i));
+            if (!params.padding.isEmpty()) {
+                ASN1Integer[] paddings = new ASN1Integer[params.padding.size()];
+                for (int i = 0; i < params.padding.size(); i++) {
+                    paddings[i] = new ASN1Integer(params.padding.get(i));
                 }
-                teeEnforced.add(new DERTaggedObject(true, 203, new DERSet(mgfDigests)));
+                teeEnforced.add(new DERTaggedObject(true, 6, new DERSet(paddings)));
             }
 
-            teeEnforced.add(new DERTaggedObject(true, 10, new ASN1Integer(params.ecCurve)));
+            if (params.algorithm == 3) {
+                teeEnforced.add(new DERTaggedObject(true, 10, new ASN1Integer(params.ecCurve)));
+            }
+            if (params.algorithm == 1) {
+                BigInteger publicExponent = params.rsaPublicExponent != null
+                        ? params.rsaPublicExponent : RSAKeyGenParameterSpec.F4;
+                teeEnforced.add(new DERTaggedObject(true, 200, new ASN1Integer(publicExponent)));
+                if (AttestationUtils.getAttestVersion() >= 100
+                        && !params.rsaOaepMgfDigest.isEmpty()) {
+                    ASN1Integer[] mgfDigests = new ASN1Integer[params.rsaOaepMgfDigest.size()];
+                    for (int i = 0; i < params.rsaOaepMgfDigest.size(); i++) {
+                        mgfDigests[i] = new ASN1Integer(params.rsaOaepMgfDigest.get(i));
+                    }
+                    teeEnforced.add(new DERTaggedObject(true, 203, new DERSet(mgfDigests)));
+                }
+            }
             if (params.maxUsageCount != -1) {
                 teeEnforced.add(new DERTaggedObject(true, 405,
                         new ASN1Integer(params.maxUsageCount)));
@@ -256,6 +271,11 @@ public final class CertificateGenerator {
             teeEnforced.add(new DERTaggedObject(true, 706, new ASN1Integer(AttestationUtils.getPatchLevel(false))));
             teeEnforced.add(new DERTaggedObject(true, 718, new ASN1Integer(AttestationUtils.getVendorPatchLevel(true))));
             teeEnforced.add(new DERTaggedObject(true, 719, new ASN1Integer(AttestationUtils.getBootPatchLevel(true))));
+            byte[] moduleHash = params.moduleHash != null
+                    ? params.moduleHash : AttestationUtils.getModuleHash();
+            if (moduleHash != null && moduleHash.length > 0) {
+                teeEnforced.add(new DERTaggedObject(true, 724, new DEROctetString(moduleHash)));
+            }
 
             if (params.brand != null) {
                 teeEnforced.add(new DERTaggedObject(true, 710, new DEROctetString(params.brand)));
@@ -271,11 +291,6 @@ public final class CertificateGenerator {
             }
             if (params.model != null) {
                 teeEnforced.add(new DERTaggedObject(true, 717, new DEROctetString(params.model)));
-            }
-            byte[] moduleHash = params.moduleHash != null
-                    ? params.moduleHash : AttestationUtils.getModuleHash();
-            if (moduleHash != null && moduleHash.length > 0) {
-                teeEnforced.add(new DERTaggedObject(true, 724, new DEROctetString(moduleHash)));
             }
 
             ASN1EncodableVector softwareEnforced = new ASN1EncodableVector();

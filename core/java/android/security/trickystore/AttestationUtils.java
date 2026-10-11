@@ -1,6 +1,8 @@
 package android.security.trickystore;
 
+import android.app.ActivityThread;
 import android.os.Build;
+import android.os.Process;
 import android.os.SystemProperties;
 import android.security.KeyStore2;
 import android.security.keymaster.KeymasterDefs;
@@ -276,7 +278,7 @@ public final class AttestationUtils {
     }
 
     public static int getPatchLevel(boolean isLong) {
-        return getPatchLevel(isLong, null);
+        return getPatchLevel(isLong, callerPackages());
     }
 
     public static int getPatchLevel(boolean isLong, String[] packages) {
@@ -290,7 +292,7 @@ public final class AttestationUtils {
     }
 
     public static int getVendorPatchLevel(boolean isLong) {
-        return getVendorPatchLevel(isLong, null);
+        return getVendorPatchLevel(isLong, callerPackages());
     }
 
     public static int getVendorPatchLevel(boolean isLong, String[] packages) {
@@ -304,7 +306,17 @@ public final class AttestationUtils {
     }
 
     public static int getBootPatchLevel(boolean isLong) {
-        return getBootPatchLevel(isLong, null);
+        return getBootPatchLevel(isLong, callerPackages());
+    }
+
+    // Certificate generation runs in the app process. Per-package patch sections
+    // are keyed by that app, so a bank does not inherit another package's date.
+    private static String[] callerPackages() {
+        try {
+            return ActivityThread.getPackageManager().getPackagesForUid(Process.myUid());
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     public static int getBootPatchLevel(boolean isLong, String[] packages) {

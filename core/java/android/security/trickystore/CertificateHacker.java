@@ -44,6 +44,7 @@ import java.security.cert.X509Certificate;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,6 +95,8 @@ public final class CertificateHacker {
                 int tagNo = taggedObject.getTagNo();
                 if (tagNo == 704) {
                     originalRootOfTrust = taggedObject.getBaseObject().toASN1Primitive();
+                } else if (tagNo == 705 || tagNo == 706 || tagNo == 718 || tagNo == 719) {
+                    // Re-stamped below; retaining these would create duplicate tags.
                 } else if (attestationIdOverrides.containsKey(tagNo)) {
                     // Dropped here; the spoofed replacement is added back in
                     // hackAttestExtension() so the certified identity and the
@@ -280,7 +283,7 @@ public final class CertificateHacker {
      * their real, untouched hardware identity in the attestation cert.
      */
     private static Map<Integer, byte[]> getAttestationIdOverrides() {
-        Map<Integer, byte[]> overrides = new java.util.HashMap<>();
+        Map<Integer, byte[]> overrides = new LinkedHashMap<>();
         try {
             PlayIntegritySpoofService pif = PlayIntegritySpoofService.getInstance();
             if (!pif.isSpoofBuildEnabled()) {
@@ -339,15 +342,11 @@ public final class CertificateHacker {
         };
         DERSequence hackedRootOfTrust = new DERSequence(rootOfTrustElements);
 
-        vector.add(new DERTaggedObject(true, 718, 
-            new ASN1Integer(AttestationUtils.getVendorPatchLevel(true))));
-        vector.add(new DERTaggedObject(true, 719, 
-            new ASN1Integer(AttestationUtils.getBootPatchLevel(true))));
-        vector.add(new DERTaggedObject(true, 706, 
-            new ASN1Integer(AttestationUtils.getPatchLevel(false))));
-        vector.add(new DERTaggedObject(true, 705, 
+        vector.add(new DERTaggedObject(true, 704, hackedRootOfTrust));
+        vector.add(new DERTaggedObject(true, 705,
             new ASN1Integer(AttestationUtils.getOsVersion())));
-        vector.add(new DERTaggedObject(704, hackedRootOfTrust));
+        vector.add(new DERTaggedObject(true, 706,
+            new ASN1Integer(AttestationUtils.getPatchLevel(false))));
 
         // Re-add the hardware identity tags dropped in hackCertificateChain(),
         // using the same certified profile PlayIntegritySpoofService serves
@@ -357,6 +356,10 @@ public final class CertificateHacker {
             vector.add(new DERTaggedObject(true, entry.getKey(),
                 new DEROctetString(entry.getValue())));
         }
+        vector.add(new DERTaggedObject(true, 718,
+            new ASN1Integer(AttestationUtils.getVendorPatchLevel(true))));
+        vector.add(new DERTaggedObject(true, 719,
+            new ASN1Integer(AttestationUtils.getBootPatchLevel(true))));
 
         boolean hasModuleHash = false;
         for (int i = 0; i < vector.size(); i++) {

@@ -69,11 +69,10 @@ public final class PlayIntegritySpoofService {
     private volatile boolean mSpoofProps = true;
     private volatile boolean mSpoofProvider = true;
     private volatile boolean mSpoofSignature = false;
-    // Replaces the old all-or-nothing "spoofVendingBuild" boolean. This now matches
-    // upstream PlayIntegrityFork semantics: "0"/empty = disabled (default), "1"/"true" =
-    // spoof the configured FINGERPRINT field only, or any other value = use that literal
-    // string as a custom FINGERPRINT to serve to Play Store instead of the DroidGuard one.
-    private volatile String mSpoofVendingFinger = "0";
+    // "0"/"false" disables Play Store spoofing. "1"/"true", and the default when a
+    // config is loaded, copies every configured Build field except SDK_INT. Any other
+    // value is a literal FINGERPRINT used instead of the configured one.
+    private volatile String mSpoofVendingFinger = "1";
     private volatile boolean mSpoofVendingSdk = false;
     private volatile boolean mDebug = false;
 
@@ -239,12 +238,9 @@ public final class PlayIntegritySpoofService {
                 mSpoofVendingFinger = value;
                 break;
             case "spoofVendingBuild":
-                // Deprecated key from before this service matched upstream's
-                // FINGERPRINT-only vending spoof. Only honored as a fallback if
-                // spoofVendingFinger hasn't already been set by this config.
-                if ("0".equals(mSpoofVendingFinger)
-                        && ("1".equals(value) || "true".equalsIgnoreCase(value))) {
-                    Log.w(TAG, "spoofVendingBuild is deprecated, treating as spoofVendingFinger=1");
+                if ("0".equals(value) || "false".equalsIgnoreCase(value)) {
+                    mSpoofVendingFinger = "0";
+                } else if ("1".equals(value) || "true".equalsIgnoreCase(value)) {
                     mSpoofVendingFinger = "1";
                 }
                 break;
@@ -291,12 +287,24 @@ public final class PlayIntegritySpoofService {
         if (!isDroidGuard && !isVending) return;
 
         if (isVending) {
-            String vendingFingerprint = resolveVendingFingerprint();
-            if (vendingFingerprint == null) {
-                if (mVerboseLogs > 0) Log.d(TAG, "Vending FINGERPRINT spoofing disabled");
+            if (mSpoofVendingSdk) {
+                spoofVendingSdkInt();
                 return;
             }
-            spoofField("FINGERPRINT", vendingFingerprint, "PS");
+            String setting = mSpoofVendingFinger;
+            if (setting == null || setting.isEmpty()
+                    || "0".equals(setting) || "false".equalsIgnoreCase(setting)) {
+                if (mVerboseLogs > 0) Log.d(TAG, "Vending build spoofing disabled");
+                return;
+            }
+            if ("1".equals(setting) || "true".equalsIgnoreCase(setting)) {
+                for (Map.Entry<String, String> entry : mBuildFields.entrySet()) {
+                    if ("SDK_INT".equals(entry.getKey())) continue;
+                    spoofField(entry.getKey(), entry.getValue(), "PS");
+                }
+                return;
+            }
+            spoofField("FINGERPRINT", setting, "PS");
             return;
         }
 
@@ -308,35 +316,6 @@ public final class PlayIntegritySpoofService {
         for (Map.Entry<String, String> entry : mBuildFields.entrySet()) {
             spoofField(entry.getKey(), entry.getValue(), "DG");
         }
-
-        // spoofVendingSdk when enabled applies an additional SDK_INT override
-        // specifically for DroidGuard to match legacy attestation paths.
-        // It has no effect on Vending.
-        if (mSpoofVendingSdk) {
-            spoofSdkInt();
-        }
-    }
-
-    /**
-     * Resolves the FINGERPRINT value that should be spoofed to the Play Store
-     * (com.android.vending) process, based on the spoofVendingFinger setting.
-     * Returns null if vending fingerprint spoofing is disabled.
-     *
-     * spoofVendingFinger may be:
-     *   "0" / "false" / empty -> disabled (default)
-     *   "1" / "true"          -> use the same FINGERPRINT configured for DroidGuard
-     *   anything else          -> treated as a literal custom FINGERPRINT value
-     */
-    private String resolveVendingFingerprint() {
-        String setting = mSpoofVendingFinger;
-        if (setting == null || setting.isEmpty()
-                || "0".equals(setting) || "false".equalsIgnoreCase(setting)) {
-            return null;
-        }
-        if ("1".equals(setting) || "true".equalsIgnoreCase(setting)) {
-            return mBuildFields.get("FINGERPRINT");
-        }
-        return setting;
     }
 
     /**
@@ -430,17 +409,8 @@ public final class PlayIntegritySpoofService {
         throw new NoSuchFieldException("Field '" + fieldName + "' not found");
     }
 
-    private void spoofSdkInt() {
-        // Only called for DroidGuard. Reads SDK_INT from config so it stays
-        // consistent with the spoofed fingerprint. Falls back to 32 if unset.
-        String configSdk = mBuildFields.get("SDK_INT");
-        int targetSdk;
-        try {
-            targetSdk = (configSdk != null) ? Integer.parseInt(configSdk) : 32;
-        } catch (NumberFormatException e) {
-            targetSdk = 32;
-        }
-
+    private void spoofVendingSdkInt() {
+        // Play Store SDK spoof is a clamp, not the JSON SDK_INT. Other fields stay real.
         Field field;
         try {
             field = Build.VERSION.class.getDeclaredField("SDK_INT");
@@ -452,11 +422,12 @@ public final class PlayIntegritySpoofService {
         field.setAccessible(true);
         try {
             int oldValue = field.getInt(null);
+            int targetSdk = Math.min(oldValue, 32);
             if (oldValue != targetSdk) {
                 if (!putWithUnsafe(field, targetSdk)) {
                     field.set(null, targetSdk);
                 }
-                Log.d(TAG + "/Java:DG", "[SDK_INT]: " + oldValue + " -> " + targetSdk);
+                Log.d(TAG + "/Java:PS", "[SDK_INT]: " + oldValue + " -> " + targetSdk);
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to spoof SDK_INT", e);

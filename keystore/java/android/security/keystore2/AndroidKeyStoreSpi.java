@@ -229,7 +229,9 @@ public class AndroidKeyStoreSpi extends KeyStoreSpi {
         sInHack.set(Boolean.TRUE);
         try {
             TrickyStoreService service = TrickyStoreService.getInstance();
-            if (!service.hasKeyboxes()) {
+            // Reload before the empty check. A process that started before the
+            // keybox import would otherwise keep the real chain for every app.
+            if (!service.getKeyBoxManager().hasKeyboxes()) {
                 return chain;
             }
 

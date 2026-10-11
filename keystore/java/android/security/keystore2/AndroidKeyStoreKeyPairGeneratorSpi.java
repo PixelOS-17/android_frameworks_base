@@ -859,17 +859,34 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
                 if (mKeymasterDigests != null) {
                     for (int d : mKeymasterDigests) params.digest.add(d);
                 }
+                if (mKeymasterEncryptionPaddings != null) {
+                    for (int padding : mKeymasterEncryptionPaddings) {
+                        params.padding.add(padding);
+                    }
+                }
+                if (mKeymasterSignaturePaddings != null) {
+                    for (int padding : mKeymasterSignaturePaddings) {
+                        params.padding.add(padding);
+                    }
+                }
 
                 if (mKeymasterAlgorithm == KeymasterDefs.KM_ALGORITHM_RSA
                         && mKeymasterEncryptionPaddings != null) {
                     for (int padding : mKeymasterEncryptionPaddings) {
                         if (padding == KeymasterDefs.KM_PAD_RSA_OAEP) {
-                            if (mKeymasterDigests != null) {
-                                for (int d : mKeymasterDigests) {
+                            if (mKeymasterMgf1Digests != null) {
+                                for (int d : mKeymasterMgf1Digests) {
                                     params.rsaOaepMgfDigest.add(d);
                                 }
-                            } else {
-                                params.rsaOaepMgfDigest.add(KeymasterDefs.KM_DIGEST_SHA1);
+                            }
+                            if (!getMgf1DigestSetterFlag() && mKeymasterDigests != null) {
+                                final int defaultMgf1Digest = KeyProperties.Digest.toKeymaster(
+                                        DEFAULT_MGF1_DIGEST);
+                                for (int d : mKeymasterDigests) {
+                                    if (d != defaultMgf1Digest) {
+                                        params.rsaOaepMgfDigest.add(d);
+                                    }
+                                }
                             }
                             break;
                         }
