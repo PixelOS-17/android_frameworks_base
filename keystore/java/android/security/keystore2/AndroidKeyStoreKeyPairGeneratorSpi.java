@@ -1300,9 +1300,10 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
             ));
         }
 
+        // addUserAuthArgs adds NO_AUTH_REQUIRED, or USER_SECURE_ID when the
+        // caller asked for authentication. keystore2 rejects a key that has both.
         KeyStore2ParameterUtils.addUserAuthArgs(params, mSpec);
         addAlgorithmSpecificParameters(params);
-        params.add(KeyStore2ParameterUtils.makeBool(KeymasterDefs.KM_TAG_NO_AUTH_REQUIRED));
         return params;
     }
 
