@@ -189,7 +189,7 @@ public final class CertificateGenerator {
         );
 
         builder.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.keyCertSign));
-        builder.addExtension(buildAttestExtension(params, securityLevel, uid));
+        builder.addExtension(buildAttestExtension(params, securityLevel, uid, notBefore, notAfter));
 
         String sigAlg = params.algorithm == 3 ? "SHA256withECDSA" : "SHA256withRSA";
         // The platform BouncyCastle provider has no SHA256withECDSA. Sign with
@@ -203,7 +203,8 @@ public final class CertificateGenerator {
             new ByteArrayInputStream(holder.getEncoded()));
     }
 
-    private static Extension buildAttestExtension(KeyGenParameters params, int securityLevel, int uid) {
+    private static Extension buildAttestExtension(KeyGenParameters params, int securityLevel, int uid,
+            Date notBefore, Date notAfter) {
         if (params.attestationChallenge != null &&
             params.attestationChallenge.length > MAX_ATTESTATION_CHALLENGE_SIZE) {
             throw new ProviderException("Failed to generate key pair.");
@@ -300,6 +301,11 @@ public final class CertificateGenerator {
             } catch (Throwable e) {
                  Log.w(TAG, "Failed to create application ID", e);
             }
+            // GMS Tap & Pay rejects an attestation whose softwareEnforced list is
+            // missing CERTIFICATE_NOT_BEFORE (400) and requires it to match the
+            // leaf validity window the caller asked for (see gljw in GMS).
+            softwareEnforced.add(new DERTaggedObject(true, 400, new ASN1Integer(notBefore.getTime())));
+            softwareEnforced.add(new DERTaggedObject(true, 401, new ASN1Integer(notAfter.getTime())));
             softwareEnforced.add(new DERTaggedObject(true, 701, new ASN1Integer(System.currentTimeMillis())));
 
             ASN1Encodable[] keyDescriptionElements = new ASN1Encodable[] {
