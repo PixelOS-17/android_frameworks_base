@@ -59,7 +59,6 @@ public class AxSpoofManager implements IAxSpoofManager {
 
     private static final String[] WATCHED_KEYS = {
             Settings.Secure.SPOOF_PIF_CONFIG,
-            Settings.Secure.SPOOF_GAMEPROPS_CONFIG,
             Settings.Secure.SPOOF_TRICKYSTORE_TARGET,
             Settings.Secure.SPOOF_TRICKYSTORE_KEYBOX,
             Settings.Secure.SPOOF_TRICKYSTORE_PATCH,
@@ -918,12 +917,6 @@ public class AxSpoofManager implements IAxSpoofManager {
     public String getPifConfig() {
         if (!mActivated) return null;
         return getCached(Settings.Secure.SPOOF_PIF_CONFIG);
-    }
-
-    @Override
-    public String getGamePropsConfig() {
-        if (!mActivated) return null;
-        return getCached(Settings.Secure.SPOOF_GAMEPROPS_CONFIG);
     }
 
     @Override

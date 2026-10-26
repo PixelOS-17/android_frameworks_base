@@ -13983,32 +13983,6 @@ public final class Settings {
         public static final String NETWORK_TRAFFIC_UNITS = "network_traffic_units";
 
         /**
-         * Per-apps device spoofing
-         * @hide
-         */
-        @Readable
-        public static final String PER_APPS_DEVICE_SPOOF = "per_apps_device_spoof";
-
-        /**
-         * Custom device spoof profiles for per-app spoofing
-         * @hide
-         */
-        @Readable
-        public static final String CUSTOM_SPOOF_PROFILES = "custom_spoof_profiles";
-
-        /**
-         * @hide
-         */
-        @Readable
-        public static final String PER_APPS_DEVICE_SPOOF_ENABLED = "per_apps_device_spoof_enabled";
-
-        /**
-         * @hide
-         */
-        @Readable
-        public static final String PER_APPS_DEVICE_SPOOF_CACHE = "per_apps_device_spoof_cache";
-
-        /**
          * Whether to use PixelProps spoof for google apps
          * @hide
          */
@@ -14713,11 +14687,6 @@ public final class Settings {
          * @hide
          */
         public static final String SPOOF_PIF_CONFIG = "spoof_pif_config";
-
-        /**
-         * @hide
-         */
-        public static final String SPOOF_GAMEPROPS_CONFIG = "spoof_gameprops_config";
 
         /**
          * @hide

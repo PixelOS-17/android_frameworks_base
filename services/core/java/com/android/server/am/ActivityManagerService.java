@@ -21006,11 +21006,6 @@ public class ActivityManagerService extends IActivityManager.Stub
     }
 
     @Override
-    public String getSpoofGamePropsConfig() {
-        return AxExtServiceFactory.getSpoofManager().getGamePropsConfig();
-    }
-
-    @Override
     public String getSpoofTrickyStoreTarget() {
         return AxExtServiceFactory.getSpoofManager().getTrickyStoreTarget();
     }
