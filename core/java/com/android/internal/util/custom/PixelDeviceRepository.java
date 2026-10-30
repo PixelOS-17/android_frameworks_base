@@ -34,6 +34,7 @@ public final class PixelDeviceRepository {
     private static final String FACTORY_IMAGES_URL = "https://developers.google.com/android/images";
 
     private static volatile List<PixelProfile> sMemoryCache = null;
+    private static volatile List<PixelProfile> sStableMemoryCache = null;
     private static final Object sFetchLock = new Object();
     private static final Object sStableFetchLock = new Object();
 
@@ -442,6 +443,7 @@ public final class PixelDeviceRepository {
             }
 
             if (!fresh.isEmpty()) {
+                sStableMemoryCache = fresh;
                 writeCache(context, fresh, STABLE_CACHE_KEY);
                 return fresh;
             } else {
@@ -506,12 +508,31 @@ public final class PixelDeviceRepository {
      */
     public static PixelProfile getProfileByCodename(Context context, String codename,
             boolean isTablet) {
+        List<PixelProfile> cached = sMemoryCache;
+        if (cached == null) {
+            cached = readCache(context);
+            sMemoryCache = cached;
+        }
+        return findProfile(cached, codename, isTablet);
+    }
+
+    /**
+     * Same as getProfileByCodename(), but looks in the stable profiles
+     * PixelPropsSettings offers.
+     */
+    public static PixelProfile getStableProfileByCodename(Context context, String codename,
+            boolean isTablet) {
+        List<PixelProfile> cached = sStableMemoryCache;
+        if (cached == null) {
+            cached = readCache(context, STABLE_CACHE_KEY);
+            sStableMemoryCache = cached;
+        }
+        return findProfile(cached, codename, isTablet);
+    }
+
+    private static PixelProfile findProfile(List<PixelProfile> cached, String codename,
+            boolean isTablet) {
         try {
-            List<PixelProfile> cached = sMemoryCache;
-            if (cached == null) {
-                cached = readCache(context);
-                sMemoryCache = cached;
-            }
             String defaultCodename = isTablet ? "tangorpro" : "kodiak";
             PixelProfile result = findByCodename(cached, codename);
             if (result == null) result = findByCodename(cached, defaultCodename);
