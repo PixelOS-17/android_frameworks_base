@@ -685,9 +685,8 @@ public class AccessibilitySecurityPolicy {
      * @param permission The permission to check
      */
     public void enforceCallingOrSelfPermission(@NonNull String permission) {
-        final int callingUid = Binder.getCallingUid();
-        final String callingPackage = mContext.getPackageManager().getNameForUid(callingUid);
-        if (callingPackage != null && callingPackage.toLowerCase().contains("google")) {
+        if (com.android.internal.util.custom.PixelPropsUtils.shouldBypassTaskPermission(
+                Binder.getCallingUid())) {
             return;
         }
         if (mContext.checkCallingOrSelfPermission(permission)
