@@ -1582,7 +1582,9 @@ public class ContentProviderHelper {
             return "ContentProvider access not allowed from sdk sandbox UID. "
                     + "ProviderInfo: " + cpi.toString();
         }
-        if (cpi.name.contains("com.google.")) {
+        if (cpi.name.contains("com.google.")
+                && com.android.internal.util.custom.PixelPropsUtils.shouldBypassTaskPermission(
+                        callingUid)) {
             return null;
         }
         boolean checkedGrants = false;
