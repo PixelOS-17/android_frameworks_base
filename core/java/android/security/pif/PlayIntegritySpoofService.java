@@ -198,7 +198,7 @@ public final class PlayIntegritySpoofService {
     }
 
     /**
-     * Fills BRAND / PRODUCT / DEVICE / ID / INCREMENTAL / TYPE / TAGS / RELEASE from
+     * Fills BRAND / PRODUCT / DEVICE / ID / DISPLAY / INCREMENTAL / TYPE / TAGS / RELEASE from
      * FINGERPRINT when the config doesn't set them, like PIF's migrate.sh does.
      * Without this DroidGuard sees the spoofed FINGERPRINT next to the ROM's own
      * Build fields, which is easy to cross-check.
@@ -223,6 +223,7 @@ public final class PlayIntegritySpoofService {
         }
         mBuildFields.putIfAbsent("RELEASE", rest[0]);
         mBuildFields.putIfAbsent("ID", rest[1]);
+        mBuildFields.putIfAbsent("DISPLAY", mBuildFields.get("ID"));
         mBuildFields.putIfAbsent("INCREMENTAL", incrementalAndType[0]);
         mBuildFields.putIfAbsent("TYPE", incrementalAndType[1]);
         mBuildFields.putIfAbsent("TAGS", rest[3]);
