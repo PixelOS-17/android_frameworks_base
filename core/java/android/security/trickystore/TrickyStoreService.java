@@ -17,6 +17,7 @@ package android.security.trickystore;
 
 import android.app.ActivityManager;
 import android.app.IActivityManager;
+import android.os.Binder;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.security.keystore.KeyGenParameterSpec;
@@ -107,7 +108,7 @@ public class TrickyStoreService {
             new PatchConfig(null, Collections.emptyMap());
     // Attesting through a hooked process breaks STRONG — always skipped
     // regardless of what mode the target list has for them, and never
-    // auto-targeted by AxSpoofManager. Shared so the two can't drift apart.
+    // auto-targeted by SpoofManager. Shared so the two can't drift apart.
     public static final java.util.Set<String> XPOSED_PACKAGES = java.util.Set.of(
             "org.lsposed.manager",
             "io.github.lsposed.manager",
@@ -120,7 +121,7 @@ public class TrickyStoreService {
     );
     // Default TrickyStore targets, in the same syntax as SPOOF_TRICKYSTORE_TARGET:
     // "pkg" is AUTO, "pkg?" leaf hack, "pkg!" cert generation, "pkg-" skip.
-    // AxSpoofManager writes this into a target setting that was never set, so a
+    // SpoofManager writes this into a target setting that was never set, so a
     // fresh install attests GMS and friends without anyone opening Settings, and
     // the Settings reset and app picker read the same list rather than keeping a copy.
     public static final String DEFAULT_TARGET_LIST = String.join("\n",
@@ -196,6 +197,7 @@ public class TrickyStoreService {
     }
 
     private FetchResult fetchFromAms(Fetcher fetcher) {
+        final long token = Binder.clearCallingIdentity();
         try {
             IActivityManager am = ActivityManager.getService();
             if (am == null) {
@@ -206,6 +208,8 @@ public class TrickyStoreService {
         } catch (Exception e) {
             Log.e(TAG, "Failed to fetch trickystore config; retaining existing values", e);
             return new FetchResult(false, null);
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
     }
 
@@ -222,8 +226,7 @@ public class TrickyStoreService {
         }
         String content = fetched.value.trim();
         try {
-            Map<String, Mode> parsed = content.startsWith("[")
-                    ? parseTargetsJson(content) : parseTargetsText(content);
+            Map<String, Mode> parsed = parseTargets(content);
             mPackageModes = Collections.unmodifiableMap(parsed);
             Log.i(TAG, "Updated target policies: " + parsed.size());
         } catch (Exception e) {
@@ -231,7 +234,14 @@ public class TrickyStoreService {
         }
     }
 
-    private Map<String, Mode> parseTargetsText(String content) {
+    public static Map<String, Mode> parseTargets(String content) throws IOException {
+        if (content.startsWith("[")) {
+            return parseTargetsJson(content);
+        }
+        return parseTargetsText(content);
+    }
+
+    private static Map<String, Mode> parseTargetsText(String content) {
         Map<String, Mode> parsed = new HashMap<>();
         for (String raw : content.split("\n")) {
             String line = raw.trim();
@@ -255,7 +265,7 @@ public class TrickyStoreService {
         return parsed;
     }
 
-    private Map<String, Mode> parseTargetsJson(String content) throws IOException {
+    private static Map<String, Mode> parseTargetsJson(String content) throws IOException {
         Map<String, Mode> parsed = new HashMap<>();
         try (JsonReader reader = new JsonReader(new StringReader(content))) {
             reader.beginArray();

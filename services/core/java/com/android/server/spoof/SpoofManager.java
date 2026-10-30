@@ -25,8 +25,10 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Process;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.security.pif.PlayIntegritySpoofService;
@@ -35,12 +37,12 @@ import android.util.Base64;
 import android.util.Log;
 
 import com.android.internal.util.custom.PixelDeviceRepository;
-import com.android.server.NtServiceInjector;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -54,8 +56,8 @@ import java.util.regex.Pattern;
 
 import org.json.JSONObject;
 
-public class AxSpoofManager implements IAxSpoofManager {
-    private static final String TAG = "AxSpoofManager";
+public class SpoofManager {
+    private static final String TAG = "SpoofManager";
 
     private static final String[] WATCHED_KEYS = {
             Settings.Secure.SPOOF_PIF_CONFIG,
@@ -94,6 +96,7 @@ public class AxSpoofManager implements IAxSpoofManager {
     private static final String OFFICIAL_KEYBOX_URL =
             "https://git.evolution-x.org/EvoX/keybox/raw/branch/main/keybox.xml";
 
+    private static final String GMS_PACKAGE = "com.google.android.gms";
     private static final String VENDING_PACKAGE = "com.android.vending";
     private static final String[] GMS_FAMILY = {
             VENDING_PACKAGE,
@@ -148,27 +151,23 @@ public class AxSpoofManager implements IAxSpoofManager {
     private final Runnable mRefreshAfterClear = this::refreshNow;
 
     private final Map<String, String> mCache = new ConcurrentHashMap<>();
+    private volatile Map<String, TrickyStoreService.Mode> mTargets = Collections.emptyMap();
     private final HandlerThread mHandlerThread;
     private final Handler mHandler;
 
-    private Context mContext;
+    private final Context mContext;
     private ContentResolver mResolver;
     private ContentObserver mObserver;
     private volatile boolean mReady = false;
 
-    public AxSpoofManager() {
-        mHandlerThread = new HandlerThread("AxSpoofManager");
+    public SpoofManager(Context context) {
+        mContext = context;
+        mHandlerThread = new HandlerThread(TAG);
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
     }
 
-    @Override
     public void systemReady() {
-        mContext = NtServiceInjector.getCtx();
-        if (mContext == null) {
-            Log.w(TAG, "Context unavailable, deferring init");
-            return;
-        }
         mResolver = mContext.getContentResolver();
 
         for (String key : WATCHED_KEYS) {
@@ -223,7 +222,7 @@ public class AxSpoofManager implements IAxSpoofManager {
         if (mActivated) scheduleFirstRefresh();
 
         mReady = true;
-        Log.i(TAG, "AxSpoofManager ready");
+        Log.i(TAG, "SpoofManager ready");
     }
 
     private void scheduleFirstRefresh() {
@@ -296,6 +295,21 @@ public class AxSpoofManager implements IAxSpoofManager {
             mCache.remove(key);
         } else {
             mCache.put(key, value);
+        }
+        if (Settings.Secure.SPOOF_TRICKYSTORE_TARGET.equals(key)) {
+            mTargets = parseTargets(value);
+        }
+    }
+
+    private static Map<String, TrickyStoreService.Mode> parseTargets(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            return TrickyStoreService.parseTargets(value.trim());
+        } catch (Exception e) {
+            Log.w(TAG, "Unreadable TrickyStore targets", e);
+            return Collections.emptyMap();
         }
     }
 
@@ -916,27 +930,77 @@ public class AxSpoofManager implements IAxSpoofManager {
         return mCache.get(key);
     }
 
-    @Override
-    public String getPifConfig() {
-        if (!mActivated) return null;
+    public String getPifConfig(int callingUid) {
+        if (!mActivated || !isPifCaller(callingUid)) {
+            return null;
+        }
         return getCached(Settings.Secure.SPOOF_PIF_CONFIG);
     }
 
-    @Override
-    public String getTrickyStoreTarget() {
-        if (!mActivated) return null;
+    public String getTrickyStoreTarget(int callingUid) {
+        if (!mActivated || !isTrickyStoreCaller(callingUid)) {
+            return null;
+        }
         return getCached(Settings.Secure.SPOOF_TRICKYSTORE_TARGET);
     }
 
-    @Override
-    public String getTrickyStoreKeyBox() {
-        if (!mActivated) return null;
+    public String getTrickyStoreKeyBox(int callingUid) {
+        if (!mActivated || !isTrickyStoreCaller(callingUid)) {
+            return null;
+        }
         return getCached(Settings.Secure.SPOOF_TRICKYSTORE_KEYBOX);
     }
 
-    @Override
-    public String getTrickyStorePatch() {
-        if (!mActivated) return null;
+    public String getTrickyStorePatch(int callingUid) {
+        if (!mActivated || !isTrickyStoreCaller(callingUid)) {
+            return null;
+        }
         return getCached(Settings.Secure.SPOOF_TRICKYSTORE_PATCH);
+    }
+
+    private boolean isPifCaller(int callingUid) {
+        if (UserHandle.getAppId(callingUid) == Process.SYSTEM_UID) {
+            return true;
+        }
+        final String[] packages = getPackagesForUid(callingUid);
+        if (packages == null) {
+            return false;
+        }
+        for (String pkg : packages) {
+            if (GMS_PACKAGE.equals(pkg) || VENDING_PACKAGE.equals(pkg)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isTrickyStoreCaller(int callingUid) {
+        if (UserHandle.getAppId(callingUid) == Process.SYSTEM_UID) {
+            return true;
+        }
+        final String[] packages = getPackagesForUid(callingUid);
+        if (packages == null) {
+            return false;
+        }
+        final Map<String, TrickyStoreService.Mode> targets = mTargets;
+        for (String pkg : packages) {
+            if (TrickyStoreService.XPOSED_PACKAGES.contains(pkg)) {
+                continue;
+            }
+            final TrickyStoreService.Mode mode = targets.get(pkg);
+            if (mode != null && mode != TrickyStoreService.Mode.SKIP) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String[] getPackagesForUid(int uid) {
+        final long token = Binder.clearCallingIdentity();
+        try {
+            return mContext.getPackageManager().getPackagesForUid(uid);
+        } finally {
+            Binder.restoreCallingIdentity(token);
+        }
     }
 }

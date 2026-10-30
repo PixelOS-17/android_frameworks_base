@@ -6,6 +6,7 @@ import android.app.IActivityManager;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -156,6 +157,7 @@ public final class PlayIntegritySpoofService {
         }
 
         String content;
+        final long token = Binder.clearCallingIdentity();
         try {
             content = am.getSpoofPifConfig();
         } catch (Throwable e) {
@@ -164,6 +166,8 @@ public final class PlayIntegritySpoofService {
                 Log.w(TAG, "PIF config not available yet: " + e);
             }
             return;
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
 
         if (content == null || content.isEmpty()) {
@@ -194,7 +198,7 @@ public final class PlayIntegritySpoofService {
     }
 
     /**
-     * Fills BRAND / PRODUCT / DEVICE / ID / INCREMENTAL / TYPE / TAGS / RELEASE from
+     * Fills BRAND / PRODUCT / DEVICE / ID / DISPLAY / INCREMENTAL / TYPE / TAGS / RELEASE from
      * FINGERPRINT when the config doesn't set them, like PIF's migrate.sh does.
      * Without this DroidGuard sees the spoofed FINGERPRINT next to the ROM's own
      * Build fields, which is easy to cross-check.
@@ -219,6 +223,7 @@ public final class PlayIntegritySpoofService {
         }
         mBuildFields.putIfAbsent("RELEASE", rest[0]);
         mBuildFields.putIfAbsent("ID", rest[1]);
+        mBuildFields.putIfAbsent("DISPLAY", mBuildFields.get("ID"));
         mBuildFields.putIfAbsent("INCREMENTAL", incrementalAndType[0]);
         mBuildFields.putIfAbsent("TYPE", incrementalAndType[1]);
         mBuildFields.putIfAbsent("TAGS", rest[3]);
@@ -226,7 +231,7 @@ public final class PlayIntegritySpoofService {
 
     /**
      * Keeps SECURITY_PATCH and DEVICE_INITIAL_SDK_INT in step with the spoofed
-     * profile, matching what AxSpoofManager stages for bionic. A missing patch is
+     * profile, matching what SpoofManager stages for bionic. A missing patch is
      * taken from the build ID, and a known Pixel codename always gets its own launch
      * SDK rather than a stale configured one.
      */
@@ -306,7 +311,7 @@ public final class PlayIntegritySpoofService {
                 mSpoofBuild = "1".equals(value) || "true".equalsIgnoreCase(value);
                 break;
             case "spoofProps":
-                // Read by AxSpoofManager, which stages the prop overrides for bionic.
+                // Read by SpoofManager, which stages the prop overrides for bionic.
                 break;
             case "spoofProvider":
                 mSpoofProvider = "1".equals(value) || "true".equalsIgnoreCase(value);
@@ -334,7 +339,7 @@ public final class PlayIntegritySpoofService {
                 mDebug = "1".equals(value) || "true".equalsIgnoreCase(value);
                 break;
             default:
-                // "*.build.id" style keys are system prop overrides. AxSpoofManager
+                // "*.build.id" style keys are system prop overrides. SpoofManager
                 // stages those for bionic, they are not Build fields.
                 if (!key.contains(".") && !key.startsWith("*")) {
                     mBuildFields.put(key, value);
@@ -352,8 +357,12 @@ public final class PlayIntegritySpoofService {
         }
     }
 
+    public static boolean isTargetProcess(String processName) {
+        return DROIDGUARD_PACKAGE.equals(processName) || VENDING_PACKAGE.equals(processName);
+    }
+
     public boolean shouldSpoof(String processName) {
-        if (!DROIDGUARD_PACKAGE.equals(processName) && !VENDING_PACKAGE.equals(processName)) {
+        if (!isTargetProcess(processName)) {
             return false;
         }
         ensureLoaded();

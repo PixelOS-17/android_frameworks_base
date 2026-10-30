@@ -216,107 +216,17 @@ public final class PixelPropsUtils {
 
         init(context);
 
-        Map<String, Object> propsToChange = new HashMap<>();
-
         propsToChangeGeneric.forEach((k, v) -> setPropValue(k, v));
 
         sIsExcluded = isGoogleCameraPackage(packageName);
 
-        final Set<String> ppTargets;
-        if (sPpTargets == null) {
-            // Pre-assign sentinel so a partial failure doesn't leave sPpTargets null
-            sPpTargets = new ArraySet<>(PixelDeviceRepository.DEFAULT_PP_TARGETS);
-            try {
-                final android.content.ContentResolver cr = context.getContentResolver();
-                final String raw = Settings.Secure.getString(cr, PI_PP_TARGETS_KEY);
-                if (raw != null && !raw.isEmpty()) {
-                    sPpTargets = new ArraySet<>(Arrays.asList(raw.split(",")));
-                }
-                final String model = Settings.Secure.getString(cr, PI_PP_MODEL_KEY);
-                if (model != null && !model.isEmpty()) sPpModel = model;
-            } catch (Throwable t) {
-                // sPpTargets already holds the safe default; no retry next call
-            }
-        }
-        ppTargets = sPpTargets;
-
+        final Set<String> ppTargets = sPpTargets != null
+                ? sPpTargets : PixelDeviceRepository.DEFAULT_PP_TARGETS;
         if (!sIsExcluded
                 && ppTargets.contains(packageName)
                 && !sIsMainlineDevice
                 && sPixelPropsSpoofEnabled) {
-
-            // Resolve model profile from cache, falling back to hardcoded defaults
-            final boolean isTablet = isDeviceTablet(context);
-            Map<String, Object> resolvedProps = null;
-            try {
-                // GMS is pinned to the Mosey codename so Quick Share Phenotype gates
-                final boolean moseySpoofEnabled = sPpTargets != null
-                        && sPpTargets.contains("com.google.android.mosey");
-                final String defaultCodename = isTablet
-                        ? "tangorpro" : PixelDeviceRepository.getDefaultPhoneCodename();
-                final String codename = (packageName.equals(PACKAGE_GMS) && moseySpoofEnabled)
-                        ? MOSEY_PIXEL_CODENAME
-                        : (sPpModel != null && !sPpModel.isEmpty()
-                                ? sPpModel
-                                : defaultCodename);
-                final PixelDeviceRepository.PixelProfile profile =
-                        PixelDeviceRepository.getProfileByCodename(
-                                context, codename, isTablet);
-                if (profile != null) {
-                    resolvedProps = new HashMap<>();
-                    resolvedProps.put("BRAND",       "google");
-                    resolvedProps.put("MANUFACTURER","Google");
-                    resolvedProps.put("BOARD",       profile.getDevice());
-                    resolvedProps.put("DEVICE",      profile.getDevice());
-                    resolvedProps.put("PRODUCT",     profile.getProduct());
-                    resolvedProps.put("HARDWARE",    profile.getDevice());
-                    resolvedProps.put("MODEL",       profile.getModel());
-                    resolvedProps.put("ID",          profile.getBuildId());
-                    resolvedProps.put("TYPE",        "user");
-                    resolvedProps.put("TAGS",        "release-keys");
-                    resolvedProps.put("FINGERPRINT", profile.getFingerprint());
-                }
-            } catch (Throwable t) {
-                dlog("Profile resolve failed, using hardcoded fallback: " + t.getMessage());
-            }
-
-            if (resolvedProps == null) {
-                // getProfileByCodename already falls back through cache → FALLBACK_PROFILES
-                // internally, so this only triggers on a hard exception above.
-                final PixelDeviceRepository.PixelProfile fallback =
-                        PixelDeviceRepository.getProfileByCodename(
-                                context,
-                                isTablet ? "tangorpro" : PixelDeviceRepository.getDefaultPhoneCodename(),
-                                isTablet);
-                resolvedProps = new HashMap<>();
-                if (fallback != null) {
-                    resolvedProps.put("BRAND",       "google");
-                    resolvedProps.put("MANUFACTURER","Google");
-                    resolvedProps.put("BOARD",       fallback.getDevice());
-                    resolvedProps.put("DEVICE",      fallback.getDevice());
-                    resolvedProps.put("PRODUCT",     fallback.getProduct());
-                    resolvedProps.put("HARDWARE",    fallback.getDevice());
-                    resolvedProps.put("MODEL",       fallback.getModel());
-                    resolvedProps.put("ID",          fallback.getBuildId());
-                    resolvedProps.put("TYPE",        "user");
-                    resolvedProps.put("TAGS",        "release-keys");
-                    resolvedProps.put("FINGERPRINT", fallback.getFingerprint());
-                }
-            }
-
-            propsToChange.putAll(resolvedProps);
-
-            dlog("Defining props for: " + packageName);
-            for (Map.Entry<String, Object> prop : propsToChange.entrySet()) {
-                String key = prop.getKey();
-                Object value = prop.getValue();
-                if (propsToKeep.containsKey(packageName) && propsToKeep.get(packageName).contains(key)) {
-                    dlog("Not defining " + key + " prop for: " + packageName);
-                    continue;
-                }
-                dlog("Defining " + key + " prop for: " + packageName);
-                setPropValue(key, value);
-            }
+            applyPixelProfile(context, packageName, ppTargets);
         }
 
         // Set proper indexing fingerprint
@@ -329,6 +239,49 @@ public final class PixelPropsUtils {
             return;
         }
         applyAppSpecificProps(packageName);
+    }
+
+    private static void applyPixelProfile(Context context, String packageName,
+            Set<String> ppTargets) {
+        final boolean isTablet = isDeviceTablet(context);
+        final String codename;
+        if (packageName.equals(PACKAGE_GMS) && ppTargets.contains("com.google.android.mosey")) {
+            // Quick Share Phenotype gates key on the exact model
+            codename = MOSEY_PIXEL_CODENAME;
+        } else if (sPpModel != null && !sPpModel.isEmpty()) {
+            codename = sPpModel;
+        } else if (isTablet) {
+            codename = "tangorpro";
+        } else {
+            codename = PixelDeviceRepository.getDefaultPhoneCodename();
+        }
+
+        final PixelDeviceRepository.PixelProfile profile =
+                PixelDeviceRepository.getStableProfileByCodename(context, codename, isTablet);
+        if (profile == null) {
+            return;
+        }
+
+        final Map<String, Object> props = new HashMap<>();
+        props.put("BRAND", "google");
+        props.put("MANUFACTURER", "Google");
+        props.put("BOARD", profile.getDevice());
+        props.put("DEVICE", profile.getDevice());
+        props.put("PRODUCT", profile.getProduct());
+        props.put("HARDWARE", profile.getDevice());
+        props.put("MODEL", profile.getModel());
+        props.put("ID", profile.getBuildId());
+        props.put("FINGERPRINT", profile.getFingerprint());
+
+        final ArrayList<String> keep = propsToKeep.get(packageName);
+        dlog("Defining props for: " + packageName);
+        for (Map.Entry<String, Object> prop : props.entrySet()) {
+            if (keep != null && keep.contains(prop.getKey())) {
+                dlog("Not defining " + prop.getKey() + " prop for: " + packageName);
+                continue;
+            }
+            setPropValue(prop.getKey(), prop.getValue());
+        }
     }
 
     private static boolean isDeviceTablet(Context context) {
@@ -411,10 +364,6 @@ public final class PixelPropsUtils {
         return strArr;
     }
 
-    public static boolean isPackageGoogle(String pkg) {
-        return pkg != null && pkg.toLowerCase().contains("google");
-    }
-
     private static Set<String> getLauncherPkgs() {
         synchronized (PixelPropsUtils.class) {
             if (mLauncherPkgs == null || mLauncherPkgs.isEmpty()) {
@@ -438,54 +387,36 @@ public final class PixelPropsUtils {
         }
     }
 
-    public static boolean isSystemLauncher(Context context) {
-        try {
-            return isSystemLauncherInternal(
-                    context.getPackageManager().getNameForUid(android.os.Binder.getCallingUid()));
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     public static boolean isSystemLauncher(int callingUid) {
-        try {
-            return isSystemLauncherInternal(
-                    ActivityThread.getPackageManager().getNameForUid(callingUid));
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public static boolean isSystemLauncherInternal(String callerPackage) {
-        return getLauncherPkgs().contains(callerPackage);
+        return isSystemPackageUid(getLauncherPkgs(), callingUid);
     }
 
     public static boolean shouldBypassTaskPermission(int callingUid) {
-        for (String pkg : getExemptedUidPkgs()) {
+        return isSystemPackageUid(getExemptedUidPkgs(), callingUid);
+    }
+
+    public static boolean shouldBypassManageActivityTaskPermission(Context context) {
+        return shouldBypassTaskPermission(Binder.getCallingUid());
+    }
+
+    public static boolean shouldBypassMonitorInputPermission(Context context) {
+        return shouldBypassTaskPermission(Binder.getCallingUid());
+    }
+
+    private static boolean isSystemPackageUid(Set<String> pkgs, int callingUid) {
+        for (String pkg : pkgs) {
             try {
                 ApplicationInfo appInfo =
                         ActivityThread.getPackageManager()
                                 .getApplicationInfo(pkg, 0, UserHandle.getUserId(callingUid));
-                if (appInfo.uid == callingUid) {
+                if (appInfo != null && appInfo.uid == callingUid && appInfo.isSystemApp()) {
                     return true;
                 }
             } catch (Exception e) {
-                dlog("shouldBypassTaskPermission: failed to get appInfo for uid " + callingUid + ": " + e.getMessage());
+                dlog("isSystemPackageUid: failed to get appInfo for " + pkg + ": " + e.getMessage());
             }
         }
         return false;
-    }
-
-    public static boolean shouldBypassManageActivityTaskPermission(Context context) {
-        final int callingUid = Binder.getCallingUid();
-        return isSystemLauncher(callingUid)
-                || isPackageGoogle(context.getPackageManager().getNameForUid(callingUid));
-    }
-
-    public static boolean shouldBypassMonitorInputPermission(Context context) {
-        final int callingUid = Binder.getCallingUid();
-        return shouldBypassTaskPermission(callingUid)
-                || isPackageGoogle(context.getPackageManager().getNameForUid(callingUid));
     }
 
     private static boolean detectMainlinePixelDevice() {
