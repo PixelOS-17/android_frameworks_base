@@ -6,6 +6,7 @@ import android.app.IActivityManager;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
+import android.os.Binder;
 import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
@@ -156,6 +157,7 @@ public final class PlayIntegritySpoofService {
         }
 
         String content;
+        final long token = Binder.clearCallingIdentity();
         try {
             content = am.getSpoofPifConfig();
         } catch (Throwable e) {
@@ -164,6 +166,8 @@ public final class PlayIntegritySpoofService {
                 Log.w(TAG, "PIF config not available yet: " + e);
             }
             return;
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
 
         if (content == null || content.isEmpty()) {
