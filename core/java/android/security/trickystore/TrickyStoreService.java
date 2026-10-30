@@ -17,6 +17,7 @@ package android.security.trickystore;
 
 import android.app.ActivityManager;
 import android.app.IActivityManager;
+import android.os.Binder;
 import android.os.RemoteException;
 import android.os.SystemClock;
 import android.security.keystore.KeyGenParameterSpec;
@@ -196,6 +197,7 @@ public class TrickyStoreService {
     }
 
     private FetchResult fetchFromAms(Fetcher fetcher) {
+        final long token = Binder.clearCallingIdentity();
         try {
             IActivityManager am = ActivityManager.getService();
             if (am == null) {
@@ -206,6 +208,8 @@ public class TrickyStoreService {
         } catch (Exception e) {
             Log.e(TAG, "Failed to fetch trickystore config; retaining existing values", e);
             return new FetchResult(false, null);
+        } finally {
+            Binder.restoreCallingIdentity(token);
         }
     }
 
@@ -222,8 +226,7 @@ public class TrickyStoreService {
         }
         String content = fetched.value.trim();
         try {
-            Map<String, Mode> parsed = content.startsWith("[")
-                    ? parseTargetsJson(content) : parseTargetsText(content);
+            Map<String, Mode> parsed = parseTargets(content);
             mPackageModes = Collections.unmodifiableMap(parsed);
             Log.i(TAG, "Updated target policies: " + parsed.size());
         } catch (Exception e) {
@@ -231,7 +234,14 @@ public class TrickyStoreService {
         }
     }
 
-    private Map<String, Mode> parseTargetsText(String content) {
+    public static Map<String, Mode> parseTargets(String content) throws IOException {
+        if (content.startsWith("[")) {
+            return parseTargetsJson(content);
+        }
+        return parseTargetsText(content);
+    }
+
+    private static Map<String, Mode> parseTargetsText(String content) {
         Map<String, Mode> parsed = new HashMap<>();
         for (String raw : content.split("\n")) {
             String line = raw.trim();
@@ -255,7 +265,7 @@ public class TrickyStoreService {
         return parsed;
     }
 
-    private Map<String, Mode> parseTargetsJson(String content) throws IOException {
+    private static Map<String, Mode> parseTargetsJson(String content) throws IOException {
         Map<String, Mode> parsed = new HashMap<>();
         try (JsonReader reader = new JsonReader(new StringReader(content))) {
             reader.beginArray();
