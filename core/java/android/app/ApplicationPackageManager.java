@@ -843,7 +843,13 @@ public class ApplicationPackageManager extends PackageManager {
                 }
             };
 
-    private static final String[] featuresPixel = {
+    private static final ArraySet<String> sTensorFeatureApps = new ArraySet<>(Arrays.asList(
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.apps.pixel.agent",
+            "com.google.android.apps.pixel.creativeassistant",
+            "com.google.android.dialer"));
+
+    private static final ArraySet<String> featuresPixel = new ArraySet<>(Arrays.asList(
             "com.google.android.apps.photos.PIXEL_2019_PRELOAD",
             "com.google.android.apps.photos.PIXEL_2019_MIDYEAR_PRELOAD",
             "com.google.android.apps.photos.PIXEL_2018_PRELOAD",
@@ -857,10 +863,9 @@ public class ApplicationPackageManager extends PackageManager {
             "com.google.android.feature.PIXEL_2017_EXPERIENCE",
             "com.google.android.feature.PIXEL_EXPERIENCE",
             "com.google.android.feature.GOOGLE_BUILD",
-            "com.google.android.feature.GOOGLE_EXPERIENCE"
-    };
+            "com.google.android.feature.GOOGLE_EXPERIENCE"));
 
-    private static final String[] featuresPixelOthers = {
+    private static final ArraySet<String> featuresPixelOthers = new ArraySet<>(Arrays.asList(
             "com.google.android.feature.ASI",
             "com.google.android.feature.ANDROID_ONE_EXPERIENCE",
             "com.google.android.feature.GOOGLE_FI_BUNDLED",
@@ -877,10 +882,9 @@ public class ApplicationPackageManager extends PackageManager {
             "com.google.android.apps.dialer.call_recording_audio",
             "com.google.android.apps.dialer.SUPPORTED",
             "com.google.android.feature.CONTEXTUAL_SEARCH",
-            "com.google.android.feature.D2D_CABLE_MIGRATION_FEATURE"
-    };
+            "com.google.android.feature.D2D_CABLE_MIGRATION_FEATURE"));
 
-    private static final String[] featuresTensor = {
+    private static final ArraySet<String> featuresTensor = new ArraySet<>(Arrays.asList(
             "com.google.android.feature.PIXEL_2026_EXPERIENCE",
             "com.google.android.feature.PIXEL_2026_MIDYEAR_EXPERIENCE",
             "com.google.android.feature.PIXEL_2025_EXPERIENCE",
@@ -891,16 +895,14 @@ public class ApplicationPackageManager extends PackageManager {
             "com.google.android.feature.PIXEL_2023_MIDYEAR_EXPERIENCE",
             "com.google.android.feature.PIXEL_2022_EXPERIENCE",
             "com.google.android.feature.PIXEL_2022_MIDYEAR_EXPERIENCE",
-            "com.google.android.feature.PIXEL_2021_EXPERIENCE"
-    };
+            "com.google.android.feature.PIXEL_2021_EXPERIENCE"));
 
-    private static final String[] featuresNexus = {
+    private static final ArraySet<String> featuresNexus = new ArraySet<>(Arrays.asList(
             "com.google.android.apps.photos.NEXUS_PRELOAD",
             "com.google.android.apps.photos.nexus_preload",
             "com.google.android.feature.PIXEL_EXPERIENCE",
             "com.google.android.feature.GOOGLE_BUILD",
-            "com.google.android.feature.GOOGLE_EXPERIENCE"
-    };
+            "com.google.android.feature.GOOGLE_EXPERIENCE"));
 
     @Override
     @RavenwoodRedirect
@@ -923,30 +925,20 @@ public class ApplicationPackageManager extends PackageManager {
             }
         }
 
-        String packageName = ActivityThread.currentPackageName();
-        boolean isPhotosSpoofEnabled = !Process.isIsolated() && sPhotosSpoofEnabled;
-        if (packageName != null
-                && (packageName.equals("com.google.android.googlequicksearchbox")
-                || packageName.equals("com.google.android.apps.pixel.agent")
-                || packageName.equals("com.google.android.apps.pixel.creativeassistant")
-                || packageName.equals("com.google.android.dialer")
-                || (packageName.equals("com.google.android.apps.photos")
-                && !isPhotosSpoofEnabled))) {
-            if (Arrays.asList(featuresPixel).contains(name)) return true;
-            if (Arrays.asList(featuresPixelOthers).contains(name)) return true;
-            if (Arrays.asList(featuresTensor).contains(name)) return true;
-            if (Arrays.asList(featuresNexus).contains(name)) return true;
+        final String packageName = ActivityThread.currentPackageName();
+        final boolean isPhotos = "com.google.android.apps.photos".equals(packageName);
+        if (isPhotos && !Process.isIsolated() && sPhotosSpoofEnabled) {
+            if (featuresPixel.contains(name) || featuresTensor.contains(name)) {
+                return false;
+            }
+        } else if (featuresTensor.contains(name)
+                && (isPhotos || sTensorFeatureApps.contains(packageName))) {
+            return true;
         }
-        if (packageName != null
-                && packageName.equals("com.google.android.apps.photos") && isPhotosSpoofEnabled) {
-            if (Arrays.asList(featuresPixel).contains(name)) return false;
-            if (Arrays.asList(featuresPixelOthers).contains(name)) return true;
-            if (Arrays.asList(featuresTensor).contains(name)) return false;
-            if (Arrays.asList(featuresNexus).contains(name)) return true;
+        if (featuresNexus.contains(name) || featuresPixel.contains(name)
+                || featuresPixelOthers.contains(name)) {
+            return true;
         }
-        if (Arrays.asList(featuresNexus).contains(name)) return true;
-        if (Arrays.asList(featuresPixel).contains(name)) return true;
-        if (Arrays.asList(featuresPixelOthers).contains(name)) return true;
         return mHasSystemFeatureCache.query(new HasSystemFeatureQuery(name, version));
     }
 
