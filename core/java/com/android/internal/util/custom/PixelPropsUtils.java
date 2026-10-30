@@ -411,10 +411,6 @@ public final class PixelPropsUtils {
         return strArr;
     }
 
-    public static boolean isPackageGoogle(String pkg) {
-        return pkg != null && pkg.toLowerCase().contains("google");
-    }
-
     private static Set<String> getLauncherPkgs() {
         synchronized (PixelPropsUtils.class) {
             if (mLauncherPkgs == null || mLauncherPkgs.isEmpty()) {
@@ -438,54 +434,36 @@ public final class PixelPropsUtils {
         }
     }
 
-    public static boolean isSystemLauncher(Context context) {
-        try {
-            return isSystemLauncherInternal(
-                    context.getPackageManager().getNameForUid(android.os.Binder.getCallingUid()));
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     public static boolean isSystemLauncher(int callingUid) {
-        try {
-            return isSystemLauncherInternal(
-                    ActivityThread.getPackageManager().getNameForUid(callingUid));
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public static boolean isSystemLauncherInternal(String callerPackage) {
-        return getLauncherPkgs().contains(callerPackage);
+        return isSystemPackageUid(getLauncherPkgs(), callingUid);
     }
 
     public static boolean shouldBypassTaskPermission(int callingUid) {
-        for (String pkg : getExemptedUidPkgs()) {
+        return isSystemPackageUid(getExemptedUidPkgs(), callingUid);
+    }
+
+    public static boolean shouldBypassManageActivityTaskPermission(Context context) {
+        return shouldBypassTaskPermission(Binder.getCallingUid());
+    }
+
+    public static boolean shouldBypassMonitorInputPermission(Context context) {
+        return shouldBypassTaskPermission(Binder.getCallingUid());
+    }
+
+    private static boolean isSystemPackageUid(Set<String> pkgs, int callingUid) {
+        for (String pkg : pkgs) {
             try {
                 ApplicationInfo appInfo =
                         ActivityThread.getPackageManager()
                                 .getApplicationInfo(pkg, 0, UserHandle.getUserId(callingUid));
-                if (appInfo.uid == callingUid) {
+                if (appInfo != null && appInfo.uid == callingUid && appInfo.isSystemApp()) {
                     return true;
                 }
             } catch (Exception e) {
-                dlog("shouldBypassTaskPermission: failed to get appInfo for uid " + callingUid + ": " + e.getMessage());
+                dlog("isSystemPackageUid: failed to get appInfo for " + pkg + ": " + e.getMessage());
             }
         }
         return false;
-    }
-
-    public static boolean shouldBypassManageActivityTaskPermission(Context context) {
-        final int callingUid = Binder.getCallingUid();
-        return isSystemLauncher(callingUid)
-                || isPackageGoogle(context.getPackageManager().getNameForUid(callingUid));
-    }
-
-    public static boolean shouldBypassMonitorInputPermission(Context context) {
-        final int callingUid = Binder.getCallingUid();
-        return shouldBypassTaskPermission(callingUid)
-                || isPackageGoogle(context.getPackageManager().getNameForUid(callingUid));
     }
 
     private static boolean detectMainlinePixelDevice() {
