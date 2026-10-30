@@ -356,8 +356,12 @@ public final class PlayIntegritySpoofService {
         }
     }
 
+    public static boolean isTargetProcess(String processName) {
+        return DROIDGUARD_PACKAGE.equals(processName) || VENDING_PACKAGE.equals(processName);
+    }
+
     public boolean shouldSpoof(String processName) {
-        if (!DROIDGUARD_PACKAGE.equals(processName) && !VENDING_PACKAGE.equals(processName)) {
+        if (!isTargetProcess(processName)) {
             return false;
         }
         ensureLoaded();
