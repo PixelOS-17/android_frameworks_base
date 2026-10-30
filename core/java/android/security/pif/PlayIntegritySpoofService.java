@@ -226,7 +226,7 @@ public final class PlayIntegritySpoofService {
 
     /**
      * Keeps SECURITY_PATCH and DEVICE_INITIAL_SDK_INT in step with the spoofed
-     * profile, matching what AxSpoofManager stages for bionic. A missing patch is
+     * profile, matching what SpoofManager stages for bionic. A missing patch is
      * taken from the build ID, and a known Pixel codename always gets its own launch
      * SDK rather than a stale configured one.
      */
@@ -306,7 +306,7 @@ public final class PlayIntegritySpoofService {
                 mSpoofBuild = "1".equals(value) || "true".equalsIgnoreCase(value);
                 break;
             case "spoofProps":
-                // Read by AxSpoofManager, which stages the prop overrides for bionic.
+                // Read by SpoofManager, which stages the prop overrides for bionic.
                 break;
             case "spoofProvider":
                 mSpoofProvider = "1".equals(value) || "true".equalsIgnoreCase(value);
@@ -334,7 +334,7 @@ public final class PlayIntegritySpoofService {
                 mDebug = "1".equals(value) || "true".equalsIgnoreCase(value);
                 break;
             default:
-                // "*.build.id" style keys are system prop overrides. AxSpoofManager
+                // "*.build.id" style keys are system prop overrides. SpoofManager
                 // stages those for bionic, they are not Build fields.
                 if (!key.contains(".") && !key.startsWith("*")) {
                     mBuildFields.put(key, value);

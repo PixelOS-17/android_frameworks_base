@@ -35,7 +35,6 @@ import android.util.Base64;
 import android.util.Log;
 
 import com.android.internal.util.custom.PixelDeviceRepository;
-import com.android.server.NtServiceInjector;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -54,8 +53,8 @@ import java.util.regex.Pattern;
 
 import org.json.JSONObject;
 
-public class AxSpoofManager implements IAxSpoofManager {
-    private static final String TAG = "AxSpoofManager";
+public class SpoofManager {
+    private static final String TAG = "SpoofManager";
 
     private static final String[] WATCHED_KEYS = {
             Settings.Secure.SPOOF_PIF_CONFIG,
@@ -151,24 +150,19 @@ public class AxSpoofManager implements IAxSpoofManager {
     private final HandlerThread mHandlerThread;
     private final Handler mHandler;
 
-    private Context mContext;
+    private final Context mContext;
     private ContentResolver mResolver;
     private ContentObserver mObserver;
     private volatile boolean mReady = false;
 
-    public AxSpoofManager() {
-        mHandlerThread = new HandlerThread("AxSpoofManager");
+    public SpoofManager(Context context) {
+        mContext = context;
+        mHandlerThread = new HandlerThread(TAG);
         mHandlerThread.start();
         mHandler = new Handler(mHandlerThread.getLooper());
     }
 
-    @Override
     public void systemReady() {
-        mContext = NtServiceInjector.getCtx();
-        if (mContext == null) {
-            Log.w(TAG, "Context unavailable, deferring init");
-            return;
-        }
         mResolver = mContext.getContentResolver();
 
         for (String key : WATCHED_KEYS) {
@@ -223,7 +217,7 @@ public class AxSpoofManager implements IAxSpoofManager {
         if (mActivated) scheduleFirstRefresh();
 
         mReady = true;
-        Log.i(TAG, "AxSpoofManager ready");
+        Log.i(TAG, "SpoofManager ready");
     }
 
     private void scheduleFirstRefresh() {
@@ -916,25 +910,21 @@ public class AxSpoofManager implements IAxSpoofManager {
         return mCache.get(key);
     }
 
-    @Override
     public String getPifConfig() {
         if (!mActivated) return null;
         return getCached(Settings.Secure.SPOOF_PIF_CONFIG);
     }
 
-    @Override
     public String getTrickyStoreTarget() {
         if (!mActivated) return null;
         return getCached(Settings.Secure.SPOOF_TRICKYSTORE_TARGET);
     }
 
-    @Override
     public String getTrickyStoreKeyBox() {
         if (!mActivated) return null;
         return getCached(Settings.Secure.SPOOF_TRICKYSTORE_KEYBOX);
     }
 
-    @Override
     public String getTrickyStorePatch() {
         if (!mActivated) return null;
         return getCached(Settings.Secure.SPOOF_TRICKYSTORE_PATCH);
