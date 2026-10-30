@@ -31,7 +31,6 @@ import static android.content.pm.Checksum.TYPE_WHOLE_SHA256;
 import static android.content.pm.Checksum.TYPE_WHOLE_SHA512;
 import static android.content.pm.Flags.isDeviceUpgradingUsesSharedMemory;
 
-import android.Manifest;
 import android.annotation.CallbackExecutor;
 import android.annotation.DrawableRes;
 import android.annotation.NonNull;
@@ -949,23 +948,8 @@ public class ApplicationPackageManager extends PackageManager {
 
     @Override
     public int checkPermission(String permName, String pkgName) {
-        int res = getPermissionManager().checkPackageNamePermission(permName, pkgName,
+        return getPermissionManager().checkPackageNamePermission(permName, pkgName,
                 mContext.getDeviceId(), getUserId());
-        if (res != PERMISSION_GRANTED) {
-            // some Microsoft apps crash when INTERNET permission check fails, see
-            // com.microsoft.aad.adal.AuthenticationContext.checkInternetPermission() and
-            // com.microsoft.identity.client.PublicClientApplication.checkInternetPermission()
-            if (Manifest.permission.INTERNET.equals(permName)
-                    // don't rely on Context.getPackageName(), may be different from process package name
-                    && pkgName.equals(ActivityThread.currentPackageName())
-                    && pkgName.toLowerCase().contains("microsoft")
-                    && pkgName.toLowerCase().contains("com.android")
-                    && pkgName.toLowerCase().contains("google"))
-            {
-                return PERMISSION_GRANTED;
-            }
-        }
-        return res;
     }
 
     @Override
