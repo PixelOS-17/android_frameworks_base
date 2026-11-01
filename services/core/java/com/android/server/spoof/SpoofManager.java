@@ -110,9 +110,9 @@ public class SpoofManager {
             "com.google.android.googlequicksearchbox",
     };
 
-    // Staging props for bionic's custom_rom_hide_get_prop_override(), which serves
-    // them in place of the matching read-only props (ro.product.*, the *.build.id,
-    // *.security_patch and *api_level keys) — see libc/bionic/custom_rom_hide.cpp.
+    // Staging props for bionic's droidguard_prop_override(), which serves them in
+    // place of the matching read-only props (ro.product.*, the *.build.id,
+    // *.security_patch and *api_level keys), in libc/bionic/droidguard_props.cpp.
     // ro.* props are immutable after boot, so we can't SystemProperties.set() them
     // directly; these mutable props are the handoff point instead. bionic only
     // applies them inside the DroidGuard process (com.google.android.gms.unstable),
@@ -130,7 +130,7 @@ public class SpoofManager {
     private static final String PIF_BUILD_FLAVOR_PROP = "persist.sys.pif.build.flavor";
     // Config entries the fixed props above don't cover. Slot i holds "name=value", or
     // "*suffix=value" for a leading-* wildcard; the count says how many slots are live.
-    // bionic's custom_rom_hide.cpp reads these with the same names and limits.
+    // bionic's droidguard_props.cpp reads these with the same names and limits.
     private static final String PIF_CUSTOM_COUNT_PROP = "persist.sys.pif.x.count";
     private static final String PIF_CUSTOM_SLOT_PREFIX = "persist.sys.pif.x.";
     private static final int PIF_CUSTOM_SLOT_MAX = 32;
@@ -339,7 +339,7 @@ public class SpoofManager {
 
     /**
      * Empties the staged PIF props. A property can't be deleted once set,
-     * but bionic's custom_rom_hide_get_prop_override() only applies a staging
+     * but bionic's droidguard_prop_override() only applies a staging
      * prop when it is non-empty, so an empty value restores the real identity.
      */
     private void clearPifPropOverrides() {
@@ -704,7 +704,7 @@ public class SpoofManager {
     /**
      * Stages the spoofed product-identity, build id, security patch and initial
      * API level from the PIF config as mutable persist props for bionic's
-     * custom_rom_hide_get_prop_override() to serve to DroidGuard in place of the
+     * droidguard_prop_override() to serve to DroidGuard in place of the
      * real read-only values — closes the gap where DroidGuard reading via
      * getprop (rather than the Build class) would see the real device.
      *
