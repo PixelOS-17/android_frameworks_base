@@ -93,6 +93,12 @@
 extern "C" void android_reset_stack_guards();
 #endif
 
+// Defined in com_android_internal_os_DroidGuardProps.cpp. False only when a
+// property mapping was replaced and the address space was left inconsistent.
+// This has to stay outside the anonymous namespace so it matches the external
+// definition. A declaration inside that namespace has internal linkage.
+bool ApplyDroidGuardPropertyArea(const char* nice_name);
+
 namespace {
 
 // TODO (chriswailes): Add a function to initialize native Zygote data.
@@ -1908,10 +1914,6 @@ static void BindMountStorageDirs(JNIEnv* env, jobjectArray pkg_data_info_list,
     BindMountStorageToLowerFs(user_id, uid, "Android/data", packageName.c_str(), fail_fn);
   }
 }
-
-// Defined in com_android_internal_os_DroidGuardProps.cpp. False only when a
-// property mapping was replaced and the address space was left inconsistent.
-bool ApplyDroidGuardPropertyArea(const char* nice_name);
 
 // Utility routine to specialize a zygote child process.
 static void SpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArray gids, jint runtime_flags,
