@@ -221,7 +221,18 @@ public final class PlayIntegritySpoofService {
             mBuildFields.putIfAbsent("PRODUCT", head[1]);
             mBuildFields.putIfAbsent("DEVICE", head[2]);
         }
-        mBuildFields.putIfAbsent("RELEASE", rest[0]);
+        String release = mBuildFields.get("RELEASE");
+        if (release == null || release.isEmpty()) {
+            release = rest[0];
+        }
+        // A Canary fingerprint puts the literal CANARY where the release goes.
+        if ("CANARY".equalsIgnoreCase(release)) {
+            final String own = Build.VERSION.RELEASE;
+            release = (own == null || own.isEmpty()) ? null : own;
+        }
+        if (release != null && !release.isEmpty()) {
+            mBuildFields.put("RELEASE", release);
+        }
         mBuildFields.putIfAbsent("ID", rest[1]);
         mBuildFields.putIfAbsent("DISPLAY", mBuildFields.get("ID"));
         mBuildFields.putIfAbsent("INCREMENTAL", incrementalAndType[0]);

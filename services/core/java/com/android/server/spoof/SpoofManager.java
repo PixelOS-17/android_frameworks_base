@@ -26,6 +26,7 @@ import android.content.IntentFilter;
 import android.database.ContentObserver;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
@@ -766,8 +767,12 @@ public class SpoofManager {
         setStagedProp(PIF_BUILD_TAGS_PROP, tags);
         final String product = firstNonEmpty(
                 fields.get("PRODUCT"), head != null ? head[1] : null);
-        final String release = firstNonEmpty(
+        String release = firstNonEmpty(
                 fields.get("RELEASE"), tail != null ? tail[0] : null);
+        if (release != null && "CANARY".equalsIgnoreCase(release)) {
+            final String own = Build.VERSION.RELEASE;
+            release = (own == null || own.isEmpty()) ? null : own;
+        }
         final String incremental = firstNonEmpty(
                 fields.get("INCREMENTAL"), tail != null ? tail[2] : null);
         final boolean haveDescription = product != null && type != null && release != null
