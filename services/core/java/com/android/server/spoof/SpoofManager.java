@@ -110,13 +110,13 @@ public class SpoofManager {
             "com.google.android.googlequicksearchbox",
     };
 
-    // Staging props for bionic's droidguard_prop_override(), which serves them in
-    // place of the matching read-only props (ro.product.*, the *.build.id,
-    // *.security_patch and *api_level keys), in libc/bionic/droidguard_props.cpp.
-    // ro.* props are immutable after boot, so we can't SystemProperties.set() them
-    // directly; these mutable props are the handoff point instead. bionic only
-    // applies them inside the DroidGuard process (com.google.android.gms.unstable),
-    // so every other process keeps seeing the real values.
+    // Staging props for the zygote private property-area copy, which serves them
+    // in place of the matching read-only props (ro.product.*, the *.build.id,
+    // *.security_patch and *api_level keys). See
+    // com_android_internal_os_DroidGuardProps.cpp. ro.* props are immutable after
+    // boot, so we can't SystemProperties.set() them directly; these mutable props
+    // are the handoff point instead. The copy is made only for
+    // com.google.android.gms.unstable, so every other process keeps the real values.
     private static final String PIF_PRODUCT_PROP_PREFIX = "persist.sys.pif.product.";
     private static final String[] PIF_PRODUCT_PROP_NAMES = {
             "manufacturer", "brand", "model", "device", "name",
@@ -130,7 +130,7 @@ public class SpoofManager {
     private static final String PIF_BUILD_FLAVOR_PROP = "persist.sys.pif.build.flavor";
     // Config entries the fixed props above don't cover. Slot i holds "name=value", or
     // "*suffix=value" for a leading-* wildcard; the count says how many slots are live.
-    // bionic's droidguard_props.cpp reads these with the same names and limits.
+    // The zygote copy reads these with the same names and limits.
     private static final String PIF_CUSTOM_COUNT_PROP = "persist.sys.pif.x.count";
     private static final String PIF_CUSTOM_SLOT_PREFIX = "persist.sys.pif.x.";
     private static final int PIF_CUSTOM_SLOT_MAX = 32;
@@ -315,12 +315,13 @@ public class SpoofManager {
 
     /**
      * Called after SPOOF_PIF_CONFIG changes. If the config was cleared (reset
-     * to defaults, or the user deleted it), drop the staged PIF props so
-     * bionic stops serving the old device identity for the overridden reads, and
+     * to defaults, or the user deleted it), drop the staged PIF props so the
+     * next DroidGuard process stops serving the old device identity, and
      * stop the GMS family so it stops running on the old fingerprint, then
      * refresh shortly after so the device isn't left without a fingerprint until
      * the next hourly tick. A non-empty config is staged as it stands, so a
-     * manual import or a Settings edit reaches bionic the same way a refresh does.
+     * manual import or a Settings edit reaches the next specialization the
+     * same way a refresh does.
      */
     private void onPifConfigChanged() {
         final String config = getCached(Settings.Secure.SPOOF_PIF_CONFIG);
@@ -339,8 +340,8 @@ public class SpoofManager {
 
     /**
      * Empties the staged PIF props. A property can't be deleted once set,
-     * but bionic's droidguard_prop_override() only applies a staging
-     * prop when it is non-empty, so an empty value restores the real identity.
+     * but the zygote copy only applies a staging prop when it is non-empty,
+     * so an empty value restores the real identity.
      */
     private void clearPifPropOverrides() {
         for (String name : PIF_PRODUCT_PROP_NAMES) {
@@ -703,21 +704,21 @@ public class SpoofManager {
 
     /**
      * Stages the spoofed product-identity, build id, security patch and initial
-     * API level from the PIF config as mutable persist props for bionic's
-     * droidguard_prop_override() to serve to DroidGuard in place of the
-     * real read-only values — closes the gap where DroidGuard reading via
-     * getprop (rather than the Build class) would see the real device.
+     * API level from the PIF config as mutable persist props. Zygote copies them
+     * into a private property area for com.google.android.gms.unstable, in place
+     * of the real read-only values. That closes the gap where DroidGuard reading
+     * properties, rather than the Build class, would see the real device.
      *
      * The config is the source of truth whichever path wrote it (auto-refresh,
      * manual import, or Settings). A field the config doesn't carry is staged empty,
-     * which bionic treats as unset, so it never keeps a value from an older
+     * which the copy treats as unset, so it never keeps a value from an older
      * config. Like PIFork, an explicit *.build.id, *.security_patch or
      * *api_level entry wins over the matching Build field; the build id falls
      * back to the one inside FINGERPRINT.
      *
      * spoofProps=0 turns the prop overrides off, as it does in PIFork: nothing
-     * is staged, so bionic serves the real values. bionic can't read the config
-     * itself, so this is where the switch has to be honored.
+     * is staged, so the copy serves the real values. The copy can't read the
+     * config itself, so this is where the switch has to be honored.
      */
     private void stagePifPropOverrides(String config) {
         final Map<String, String> fields = parsePifConfig(config);
@@ -743,7 +744,7 @@ public class SpoofManager {
         setStagedProp(PIF_BUILD_ID_PROP, buildId);
         // ro.*.build.type/tags for every partition and ro.build.description/flavor, so they
         // agree with the spoofed fingerprint. An unofficial ROM reports test-keys on the
-        // partitions bionic doesn't pin, and its own description everywhere.
+        // partitions that are not pinned individually, and its own description everywhere.
         final String type = firstNonEmpty(fields.get("*.build.type"), fields.get("TYPE"),
                 tail != null ? tail[3] : null);
         final String tags = firstNonEmpty(fields.get("*.build.tags"), fields.get("TAGS"),
@@ -780,8 +781,8 @@ public class SpoofManager {
      * Stages every other property entry of the config for DroidGuard, like PIFork's
      * jsonProps: a key containing '.' or '*' is a property name (exact, or a leading-*
      * suffix wildcard), not a Build field. Entries are sorted by key, which is the
-     * order PIFork walks its wildcards in, and bionic serves an exact match before any
-     * wildcard. The three wildcards handled above are skipped here.
+     * order PIFork walks its wildcards in, and the zygote copy serves an exact match
+     * before any wildcard. The wildcards handled above are skipped here.
      */
     private static void stageCustomProps(Map<String, String> fields) {
         final java.util.TreeMap<String, String> entries = new java.util.TreeMap<>();
