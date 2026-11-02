@@ -42,9 +42,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -110,13 +113,13 @@ public class SpoofManager {
             "com.google.android.googlequicksearchbox",
     };
 
-    // Staging props for bionic's droidguard_prop_override(), which serves them in
-    // place of the matching read-only props (ro.product.*, the *.build.id,
-    // *.security_patch and *api_level keys), in libc/bionic/droidguard_props.cpp.
-    // ro.* props are immutable after boot, so we can't SystemProperties.set() them
-    // directly; these mutable props are the handoff point instead. bionic only
-    // applies them inside the DroidGuard process (com.google.android.gms.unstable),
-    // so every other process keeps seeing the real values.
+    // Staging props for the values DroidGuard gets in place of the matching
+    // read-only props (ro.product.*, the *.build.id, *.security_patch and
+    // *api_level keys). publishAppcompatOverrides() mirrors them onto
+    // ro.appcompat_override.<name>, which bionic serves in place of <name> only in
+    // processes zygote turned the appcompat sysprop overrides on for. ProcessList
+    // does that for com.google.android.gms.unstable alone, so every other process
+    // keeps seeing the real values.
     private static final String PIF_PRODUCT_PROP_PREFIX = "persist.sys.pif.product.";
     private static final String[] PIF_PRODUCT_PROP_NAMES = {
             "manufacturer", "brand", "model", "device", "name",
@@ -130,11 +133,20 @@ public class SpoofManager {
     private static final String PIF_BUILD_FLAVOR_PROP = "persist.sys.pif.build.flavor";
     // Config entries the fixed props above don't cover. Slot i holds "name=value", or
     // "*suffix=value" for a leading-* wildcard; the count says how many slots are live.
-    // bionic's droidguard_props.cpp reads these with the same names and limits.
     private static final String PIF_CUSTOM_COUNT_PROP = "persist.sys.pif.x.count";
     private static final String PIF_CUSTOM_SLOT_PREFIX = "persist.sys.pif.x.";
     private static final int PIF_CUSTOM_SLOT_MAX = 32;
     private static final int PROP_VALUE_MAX_CHARS = 91;
+
+    private static final String DROIDGUARD_PROCESS = "com.google.android.gms.unstable";
+    private static final String APPCOMPAT_OVERRIDE_PREFIX = "ro.appcompat_override.";
+    // Set while the overrides hold the staged values. Not persisted, the
+    // overrides themselves are gone after a reboot until they're published again.
+    private static final String PIF_OVERRIDES_ACTIVE_PROP = "sys.pif.overrides";
+    private static final String[] PIF_PARTITIONS = {
+            "bootimage", "odm", "odm_dlkm", "product", "system", "system_dlkm",
+            "system_ext", "vendor", "vendor_dlkm",
+    };
 
     // Keybox and fingerprint work get their own executor: the fingerprint crawl
     // is many sequential requests, and a stuck one (cancel() can't interrupt
@@ -316,11 +328,11 @@ public class SpoofManager {
     /**
      * Called after SPOOF_PIF_CONFIG changes. If the config was cleared (reset
      * to defaults, or the user deleted it), drop the staged PIF props so
-     * bionic stops serving the old device identity for the overridden reads, and
+     * DroidGuard stops getting the old device identity for the overridden reads, and
      * stop the GMS family so it stops running on the old fingerprint, then
      * refresh shortly after so the device isn't left without a fingerprint until
      * the next hourly tick. A non-empty config is staged as it stands, so a
-     * manual import or a Settings edit reaches bionic the same way a refresh does.
+     * manual import or a Settings edit reaches DroidGuard the same way a refresh does.
      */
     private void onPifConfigChanged() {
         final String config = getCached(Settings.Secure.SPOOF_PIF_CONFIG);
@@ -338,11 +350,12 @@ public class SpoofManager {
     }
 
     /**
-     * Empties the staged PIF props. A property can't be deleted once set,
-     * but bionic's droidguard_prop_override() only applies a staging
-     * prop when it is non-empty, so an empty value restores the real identity.
+     * Empties the staged PIF props and puts the real values back into the
+     * overrides. A property can't be deleted once set, and an empty staging
+     * prop counts as unset.
      */
     private void clearPifPropOverrides() {
+        final Set<String> published = publishedCandidates();
         for (String name : PIF_PRODUCT_PROP_NAMES) {
             setStagedProp(PIF_PRODUCT_PROP_PREFIX + name, null);
         }
@@ -354,6 +367,7 @@ public class SpoofManager {
         setStagedProp(PIF_BUILD_DESCRIPTION_PROP, null);
         setStagedProp(PIF_BUILD_FLAVOR_PROP, null);
         stageCustomProps(null);
+        publishAppcompatOverrides(published, false);
     }
 
     /**
@@ -703,21 +717,20 @@ public class SpoofManager {
 
     /**
      * Stages the spoofed product-identity, build id, security patch and initial
-     * API level from the PIF config as mutable persist props for bionic's
-     * droidguard_prop_override() to serve to DroidGuard in place of the
-     * real read-only values — closes the gap where DroidGuard reading via
-     * getprop (rather than the Build class) would see the real device.
+     * API level from the PIF config as mutable persist props, then publishes
+     * them as appcompat overrides for DroidGuard in place of the real read-only
+     * values. That closes the gap where DroidGuard reading properties natively
+     * (rather than through the Build class) would see the real device.
      *
      * The config is the source of truth whichever path wrote it (auto-refresh,
      * manual import, or Settings). A field the config doesn't carry is staged empty,
-     * which bionic treats as unset, so it never keeps a value from an older
+     * which counts as unset, so it never keeps a value from an older
      * config. Like PIFork, an explicit *.build.id, *.security_patch or
      * *api_level entry wins over the matching Build field; the build id falls
      * back to the one inside FINGERPRINT.
      *
      * spoofProps=0 turns the prop overrides off, as it does in PIFork: nothing
-     * is staged, so bionic serves the real values. bionic can't read the config
-     * itself, so this is where the switch has to be honored.
+     * is staged, so DroidGuard reads the real values.
      */
     private void stagePifPropOverrides(String config) {
         final Map<String, String> fields = parsePifConfig(config);
@@ -725,6 +738,7 @@ public class SpoofManager {
             clearPifPropOverrides();
             return;
         }
+        final Set<String> published = publishedCandidates();
         // A config in PIF's default shape only has FINGERPRINT, so fall back to the
         // brand/product/device inside it, as PlayIntegritySpoofService does.
         final String[] head = fingerprintHead(fields.get("FINGERPRINT"));
@@ -743,7 +757,7 @@ public class SpoofManager {
         setStagedProp(PIF_BUILD_ID_PROP, buildId);
         // ro.*.build.type/tags for every partition and ro.build.description/flavor, so they
         // agree with the spoofed fingerprint. An unofficial ROM reports test-keys on the
-        // partitions bionic doesn't pin, and its own description everywhere.
+        // partitions init doesn't pin, and its own description everywhere.
         final String type = firstNonEmpty(fields.get("*.build.type"), fields.get("TYPE"),
                 tail != null ? tail[3] : null);
         final String tags = firstNonEmpty(fields.get("*.build.tags"), fields.get("TAGS"),
@@ -774,13 +788,14 @@ public class SpoofManager {
                         firstNonEmpty(fields.get("DEVICE"), head != null ? head[2] : null),
                         fields.get("DEVICE_INITIAL_SDK_INT"))));
         stageCustomProps(fields);
+        publishAppcompatOverrides(published, true);
     }
 
     /**
      * Stages every other property entry of the config for DroidGuard, like PIFork's
      * jsonProps: a key containing '.' or '*' is a property name (exact, or a leading-*
      * suffix wildcard), not a Build field. Entries are sorted by key, which is the
-     * order PIFork walks its wildcards in, and bionic serves an exact match before any
+     * order PIFork walks its wildcards in, and an exact match is served before any
      * wildcard. The three wildcards handled above are skipped here.
      */
     private static void stageCustomProps(Map<String, String> fields) {
@@ -846,6 +861,218 @@ public class SpoofManager {
         } catch (Exception e) {
             Log.w(TAG, "Failed to stage " + name, e);
         }
+    }
+
+    /**
+     * Whether zygote should turn on the appcompat sysprop overrides for a new
+     * process. Only DroidGuard gets them, and only while they hold the staged
+     * values.
+     */
+    public static boolean shouldOverrideSysprops(String processName) {
+        if (!DROIDGUARD_PROCESS.equals(processName)) {
+            return false;
+        }
+        return android.os.SystemProperties.getBoolean(PIF_OVERRIDES_ACTIVE_PROP, false);
+    }
+
+    /**
+     * Writes ro.appcompat_override.<name> for every real prop a staging prop
+     * replaces, in the same order the staging props were always served in. An
+     * exact custom entry wins, then the fixed staging props, then the adbd and
+     * USB state, then a suffix entry. Only props the device has get an override.
+     * A name that had one and has no staged value anymore gets its real value
+     * back, since an override can't be deleted either.
+     */
+    private static void publishAppcompatOverrides(Set<String> previous, boolean active) {
+        if (!active) {
+            setStagedProp(PIF_OVERRIDES_ACTIVE_PROP, null);
+        }
+        final List<String[]> exact = new ArrayList<>();
+        final List<String[]> suffix = new ArrayList<>();
+        readCustomSlots(exact, suffix);
+
+        final Set<String> names = overrideCandidates(exact, suffix);
+        names.addAll(previous);
+        for (String name : names) {
+            final String real = android.os.SystemProperties.get(name, "");
+            final String current = android.os.SystemProperties.get(
+                    APPCOMPAT_OVERRIDE_PREFIX + name, "");
+            String target = active ? overrideValue(name, exact, suffix) : null;
+            if (real.isEmpty()) {
+                target = current.isEmpty() ? null : "";
+            } else if (target == null) {
+                target = current.isEmpty() ? null : real;
+            }
+            if (target == null || target.equals(current)) {
+                continue;
+            }
+            try {
+                android.os.SystemProperties.set(APPCOMPAT_OVERRIDE_PREFIX + name, target);
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to override " + name, e);
+            }
+        }
+
+        if (active) {
+            setStagedProp(PIF_OVERRIDES_ACTIVE_PROP, "1");
+        }
+    }
+
+    private static String overrideValue(String name, List<String[]> exact,
+            List<String[]> suffix) {
+        for (String[] rule : exact) {
+            if (rule[0].equals(name)) {
+                return rule[1];
+            }
+        }
+        final String staging = stagingPropFor(name);
+        if (staging != null) {
+            final String value = android.os.SystemProperties.get(staging, "");
+            if (!value.isEmpty()) {
+                return value;
+            }
+        }
+        if (name.equals("init.svc.adbd")) {
+            return "stopped";
+        }
+        if (name.equals("sys.usb.state")) {
+            return "mtp";
+        }
+        for (String[] rule : suffix) {
+            if (name.endsWith(rule[0])) {
+                return rule[1];
+            }
+        }
+        return null;
+    }
+
+    private static String stagingPropFor(String name) {
+        if (name.equals("ro.build.product")) {
+            return PIF_PRODUCT_PROP_PREFIX + "device";
+        }
+        if (name.equals("ro.build.description")) {
+            return PIF_BUILD_DESCRIPTION_PROP;
+        }
+        if (name.equals("ro.build.flavor")) {
+            return PIF_BUILD_FLAVOR_PROP;
+        }
+        if (name.startsWith("ro.product.")) {
+            final String rest = name.substring("ro.product.".length());
+            final int dot = rest.indexOf('.');
+            final String field = dot < 0 ? rest : rest.substring(dot + 1);
+            if (dot != 0 && field.indexOf('.') < 0) {
+                for (String product : PIF_PRODUCT_PROP_NAMES) {
+                    if (product.equals(field)) {
+                        return PIF_PRODUCT_PROP_PREFIX + field;
+                    }
+                }
+            }
+        }
+        if (!name.startsWith("ro.")) {
+            return null;
+        }
+        if (name.endsWith(".build.id")) {
+            return PIF_BUILD_ID_PROP;
+        }
+        if (name.endsWith(".security_patch") || name.endsWith(".real_security_patch")) {
+            return PIF_SECURITY_PATCH_PROP;
+        }
+        if (name.endsWith("api_level")) {
+            return PIF_API_LEVEL_PROP;
+        }
+        if (name.endsWith(".build.type")) {
+            return PIF_BUILD_TYPE_PROP;
+        }
+        if (name.endsWith(".build.tags")) {
+            return PIF_BUILD_TAGS_PROP;
+        }
+        return null;
+    }
+
+    /**
+     * Every real prop that can get an override. There's no way to list props
+     * from here, so a suffix entry is expanded over the same names a stock
+     * build uses for it.
+     */
+    private static Set<String> overrideCandidates(List<String[]> exact, List<String[]> suffix) {
+        final Set<String> names = new LinkedHashSet<>();
+        for (String field : PIF_PRODUCT_PROP_NAMES) {
+            names.add("ro.product." + field);
+            for (String part : PIF_PARTITIONS) {
+                names.add("ro.product." + part + "." + field);
+            }
+        }
+        names.add("ro.build.id");
+        names.add("ro.build.type");
+        names.add("ro.build.tags");
+        names.add("ro.build.product");
+        names.add("ro.build.description");
+        names.add("ro.build.flavor");
+        names.add("ro.build.version.security_patch");
+        names.add("ro.build.version.real_security_patch");
+        names.add("ro.product.first_api_level");
+        names.add("ro.board.first_api_level");
+        names.add("ro.board.api_level");
+        names.add("ro.vendor.api_level");
+        for (String part : PIF_PARTITIONS) {
+            final String prefix = "ro." + part + ".build.";
+            names.add(prefix + "id");
+            names.add(prefix + "type");
+            names.add(prefix + "tags");
+            names.add(prefix + "security_patch");
+            names.add(prefix + "version.security_patch");
+            names.add(prefix + "version.real_security_patch");
+        }
+        for (String[] rule : exact) {
+            names.add(rule[0]);
+        }
+        for (String[] rule : suffix) {
+            if (rule[0].startsWith(".")) {
+                names.add("ro" + rule[0]);
+                names.add("ro.build" + rule[0]);
+                for (String part : PIF_PARTITIONS) {
+                    names.add("ro." + part + ".build" + rule[0]);
+                }
+            } else {
+                names.add("ro." + rule[0]);
+                names.add("ro.product." + rule[0]);
+                names.add("ro.board." + rule[0]);
+            }
+        }
+        names.add("init.svc.adbd");
+        names.add("sys.usb.state");
+        return names;
+    }
+
+    /** Splits the live custom slots into exact and suffix {name, value} pairs. */
+    private static void readCustomSlots(List<String[]> exact, List<String[]> suffix) {
+        final int count = Math.min(
+                android.os.SystemProperties.getInt(PIF_CUSTOM_COUNT_PROP, 0),
+                PIF_CUSTOM_SLOT_MAX);
+        for (int i = 0; i < count; i++) {
+            final String entry = android.os.SystemProperties.get(PIF_CUSTOM_SLOT_PREFIX + i, "");
+            final int eq = entry.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            final String name = entry.substring(0, eq);
+            final String value = entry.substring(eq + 1);
+            if (name.startsWith("*")) {
+                if (name.length() > 1) {
+                    suffix.add(new String[] {name.substring(1), value});
+                }
+            } else {
+                exact.add(new String[] {name, value});
+            }
+        }
+    }
+
+    /** The names the current custom slots can have overrides on. */
+    private static Set<String> publishedCandidates() {
+        final List<String[]> exact = new ArrayList<>();
+        final List<String[]> suffix = new ArrayList<>();
+        readCustomSlots(exact, suffix);
+        return overrideCandidates(exact, suffix);
     }
 
     private static String firstNonEmpty(String... values) {
