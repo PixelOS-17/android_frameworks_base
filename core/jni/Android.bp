@@ -269,6 +269,7 @@ cc_defaults_for_libandroid_runtime {
                 "com_android_internal_os_KernelSingleUidTimeReader.cpp",
                 "com_android_internal_os_LongArrayMultiStateCounter.cpp",
                 "com_android_internal_os_LongMultiStateCounter.cpp",
+                "com_android_internal_os_DroidGuardProps.cpp",
                 "com_android_internal_os_Zygote.cpp",
                 "com_android_internal_os_ZygoteCommandBuffer.cpp",
                 "com_android_internal_os_ZygoteInit.cpp",

@@ -1909,6 +1909,10 @@ static void BindMountStorageDirs(JNIEnv* env, jobjectArray pkg_data_info_list,
   }
 }
 
+// Defined in com_android_internal_os_DroidGuardProps.cpp. False only when a
+// property mapping was replaced and the address space was left inconsistent.
+bool ApplyDroidGuardPropertyArea(const char* nice_name);
+
 // Utility routine to specialize a zygote child process.
 static void SpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArray gids, jint runtime_flags,
                              jobjectArray rlimits, jlong permitted_capabilities,
@@ -2174,6 +2178,10 @@ static void SpecializeCommon(JNIEnv* env, uid_t uid, gid_t gid, jintArray gids, 
     if (selinux_android_setcontext(uid, is_system_server, se_info_ptr, nice_name_ptr) == -1) {
         fail_fn(CREATE_ERROR("selinux_android_setcontext(%d, %d, \"%s\", \"%s\") failed", uid,
                              is_system_server, se_info_ptr, nice_name_ptr));
+    }
+
+    if (!ApplyDroidGuardPropertyArea(nice_name_ptr)) {
+        fail_fn("Could not keep a coherent property area for com.google.android.gms.unstable");
     }
 
     if ((runtime_flags & RuntimeFlags::AUDIT_OUTGOING_TRANSACTIONS) != 0) {
