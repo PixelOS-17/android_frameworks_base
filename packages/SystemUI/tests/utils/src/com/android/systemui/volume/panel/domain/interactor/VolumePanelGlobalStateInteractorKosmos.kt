@@ -17,6 +17,7 @@
 package com.android.systemui.volume.panel.domain.interactor
 
 import com.android.systemui.deviceentry.domain.interactor.deviceEntryInteractor
+import com.android.systemui.keyguard.domain.interactor.keyguardTransitionInteractor
 import com.android.systemui.kosmos.Kosmos
 import com.android.systemui.kosmos.applicationCoroutineScope
 import com.android.systemui.plugins.activityStarter
@@ -27,6 +28,7 @@ val Kosmos.volumePanelGlobalStateInteractor: VolumePanelGlobalStateInteractor by
         coroutineScope = applicationCoroutineScope,
         activityStarter = activityStarter,
         deviceEntryInteractor = deviceEntryInteractor,
+        keyguardTransitionInteractor = keyguardTransitionInteractor,
         repository = volumePanelGlobalStateRepository,
     )
 }
