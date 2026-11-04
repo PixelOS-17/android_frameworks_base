@@ -866,9 +866,12 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
             } else {
                 KeyMetadata hardwareMetadata = null;
                 try {
+                    Collection<KeyParameter> args = constructKeyGenerationArguments();
+                    if (needHack) {
+                        args = withoutHackedAttestationIds(args);
+                    }
                     hardwareMetadata = iSecurityLevel.generateKey(descriptor,
-                            mAttestKeyDescriptor,
-                            constructKeyGenerationArguments(), flags, additionalEntropy);
+                            mAttestKeyDescriptor, args, flags, additionalEntropy);
                 } catch (KeyStoreException e) {
                     if (!needHack) {
                         throw e;
@@ -1390,6 +1393,25 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
         addAttestationParameters(params);
 
         return params;
+    }
+
+    private static Collection<KeyParameter> withoutHackedAttestationIds(
+            Collection<KeyParameter> args) {
+        List<KeyParameter> filtered = new ArrayList<>(args.size());
+        for (KeyParameter param : args) {
+            switch (param.tag) {
+                case Tag.ATTESTATION_ID_BRAND:
+                case Tag.ATTESTATION_ID_DEVICE:
+                case Tag.ATTESTATION_ID_PRODUCT:
+                case Tag.ATTESTATION_ID_MANUFACTURER:
+                case Tag.ATTESTATION_ID_MODEL:
+                    break;
+                default:
+                    filtered.add(param);
+                    break;
+            }
+        }
+        return filtered;
     }
 
     private Collection<KeyParameter> constructKeyImportArguments()
