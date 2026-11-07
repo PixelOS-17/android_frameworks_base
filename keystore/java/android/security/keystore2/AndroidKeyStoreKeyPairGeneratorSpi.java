@@ -47,7 +47,6 @@ import android.security.keystore.KeyProperties;
 import android.security.keystore.SecureKeyImportUnavailableException;
 import android.security.keystore.StrongBoxUnavailableException;
 import android.security.trickystore.CertificateGenerator;
-import android.security.trickystore.CertificateHacker;
 import android.security.trickystore.TrickyStoreService;
 import android.system.keystore2.Authorization;
 import android.system.keystore2.Domain;
@@ -63,7 +62,6 @@ import android.util.Log;
 
 import libcore.util.EmptyArray;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -78,7 +76,6 @@ import java.security.SecureRandom;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateEncodingException;
-import java.security.cert.CertificateFactory;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.NamedParameterSpec;
@@ -832,11 +829,16 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
             String[] packages = null;
             final int requesterUid = Process.myUid();
             // Only attested, standard RSA/EC keys are eligible. Ordinary keys,
-            // StrongBox keys and internal hardware probes must follow Keystore.
+            // StrongBox, Curve25519, attest-key chains, and the TEE probes stay
+            // on the stock Keystore path. A plain EC generator cannot express
+            // Curve25519, and replacing an attest-key chain breaks the app's
+            // own attestation key.
             final boolean eligible = mSpec.getAttestationChallenge() != null
                     && !mSpec.isStrongBoxBacked()
                     && (mKeymasterAlgorithm == KeymasterDefs.KM_ALGORITHM_EC
                         || mKeymasterAlgorithm == KeymasterDefs.KM_ALGORITHM_RSA)
+                    && mAttestKeyDescriptor == null
+                    && !isCurve25519(mEcCurveName)
                     && !"TrickyStoreTeeCheck".equals(mEntryAlias)
                     && !"trickystore_attestation_key".equals(mEntryAlias);
             if (eligible) {
@@ -859,43 +861,18 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
                 }
             }
 
-            if (needGenerate) {
+            // Leaf hack used to generate in KeyMint and then replace the
+            // certificate. The generateKey reply still carried the original
+            // leaf, so it disagreed with getKeyEntry. Import the software key
+            // for both modes; both calls then read the stored chain.
+            if (needGenerate || needHack) {
                 metadata = buildSoftwareAttestedKey(
                         descriptor, iSecurityLevel, securityLevel, flags,
                         requesterUid, packages);
             } else {
-                KeyMetadata hardwareMetadata = null;
-                try {
-                    Collection<KeyParameter> args = constructKeyGenerationArguments();
-                    if (needHack) {
-                        args = withoutHackedAttestationIds(args);
-                    }
-                    hardwareMetadata = iSecurityLevel.generateKey(descriptor,
-                            mAttestKeyDescriptor, args, flags, additionalEntropy);
-                } catch (KeyStoreException e) {
-                    if (!needHack) {
-                        throw e;
-                    }
-                    Log.w(TAG, "Hardware key generation failed; falling back to "
-                            + "software keybox for " + mEntryAlias, e);
-                }
-
-                if (needHack
-                        && (hardwareMetadata == null
-                            || hardwareMetadata.certificate == null)) {
-                    Log.i(TAG, "Hardware produced no usable attestation; using "
-                            + "software keybox for " + mEntryAlias);
-                    deleteKeyQuietly(descriptor);
-                    metadata = buildSoftwareAttestedKey(
-                            descriptor, iSecurityLevel, securityLevel, flags,
-                            requesterUid, packages);
-                } else {
-                    metadata = hardwareMetadata;
-                    if (needHack) {
-                        metadata = maybeUpdateAttestedCertificate(
-                                descriptor, metadata, packages);
-                    }
-                }
+                metadata = iSecurityLevel.generateKey(descriptor,
+                        mAttestKeyDescriptor,
+                        constructKeyGenerationArguments(), flags, additionalEntropy);
             }
 
             AndroidKeyStorePublicKey publicKey =
@@ -1048,16 +1025,6 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
         return requireUpdatedMetadata(importedKeyDescriptor);
     }
 
-    private void deleteKeyQuietly(KeyDescriptor descriptor) {
-        try {
-            mKeyStore.deleteKey(descriptor);
-        } catch (KeyStoreException e) {
-            if (e.getErrorCode() != ResponseCode.KEY_NOT_FOUND) {
-                Log.w(TAG, "Failed to delete hardware key before software fallback", e);
-            }
-        }
-    }
-
     private byte[] encodeCertificateChain(List<Certificate> chain)
             throws CertificateEncodingException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -1077,52 +1044,6 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
             throw new ProviderException("Keystore did not return updated key metadata");
         }
         return updated.metadata;
-    }
-
-    /**
-     * Keep the hardware key, but when leaf processing is enabled store its
-     * corresponding certificate metadata. On failure the unmodified hardware
-     * metadata is returned. The calling key must remain usable in either case.
-     */
-    private KeyMetadata maybeUpdateAttestedCertificate(KeyDescriptor descriptor,
-            KeyMetadata metadata, String[] packages) {
-        if (metadata == null || metadata.certificate == null) return metadata;
-        try {
-            CertificateFactory factory = CertificateFactory.getInstance("X.509");
-            List<Certificate> original = new ArrayList<>();
-            original.add(factory.generateCertificate(
-                    new ByteArrayInputStream(metadata.certificate)));
-            if (metadata.certificateChain != null && metadata.certificateChain.length > 0) {
-                original.addAll(factory.generateCertificates(
-                        new ByteArrayInputStream(metadata.certificateChain)));
-            }
-            Certificate[] originalArray = original.toArray(new Certificate[0]);
-            Certificate[] processed = CertificateHacker.hackCertificateChain(
-                    originalArray, packages);
-            if (processed == null || processed.length == 0
-                    || processed == originalArray) {
-                return metadata;
-            }
-            byte[] userCert = processed[0].getEncoded();
-            byte[] ca = processed.length > 1
-                    ? encodeCertificateChain(Arrays.asList(processed)
-                            .subList(1, processed.length)) : null;
-            KeyDescriptor generatedKeyDescriptor = metadata.key != null
-                    ? metadata.key : descriptor;
-            mKeyStore.updateSubcomponents(generatedKeyDescriptor, userCert, ca);
-            return requireUpdatedMetadata(generatedKeyDescriptor);
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to update generated hardware certificate; keeping native key", e);
-            try {
-                // The write can have succeeded before an error reading metadata.
-                // Returning the persisted metadata if possible avoids stale chains.
-                KeyDescriptor generatedKeyDescriptor = metadata.key != null
-                        ? metadata.key : descriptor;
-                return requireUpdatedMetadata(generatedKeyDescriptor);
-            } catch (Exception ignored) {
-                return metadata;
-            }
-        }
     }
 
     @RequiresPermission(value = android.Manifest.permission.READ_PRIVILEGED_PHONE_STATE,
@@ -1395,25 +1316,6 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
         return params;
     }
 
-    private static Collection<KeyParameter> withoutHackedAttestationIds(
-            Collection<KeyParameter> args) {
-        List<KeyParameter> filtered = new ArrayList<>(args.size());
-        for (KeyParameter param : args) {
-            switch (param.tag) {
-                case Tag.ATTESTATION_ID_BRAND:
-                case Tag.ATTESTATION_ID_DEVICE:
-                case Tag.ATTESTATION_ID_PRODUCT:
-                case Tag.ATTESTATION_ID_MANUFACTURER:
-                case Tag.ATTESTATION_ID_MODEL:
-                    break;
-                default:
-                    filtered.add(param);
-                    break;
-            }
-        }
-        return filtered;
-    }
-
     private Collection<KeyParameter> constructKeyImportArguments()
             throws InvalidAlgorithmParameterException, DeviceIdAttestationException {
         List<KeyParameter> importArgs = new ArrayList<>();
@@ -1434,6 +1336,7 @@ public abstract class AndroidKeyStoreKeyPairGeneratorSpi extends KeyPairGenerato
                 case Tag.ATTESTATION_ID_MANUFACTURER:
                 case Tag.ATTESTATION_ID_MODEL:
                 case Tag.DEVICE_UNIQUE_ATTESTATION:
+                case Tag.INCLUDE_UNIQUE_ID:
                 case Tag.RESET_SINCE_ID_ROTATION:
                 case Tag.KEY_SIZE:
                 case Tag.EC_CURVE:
