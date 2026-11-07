@@ -1,11 +1,14 @@
 package android.security.trickystore;
 
 import android.hardware.security.keymint.IKeyMintDevice;
+import android.hardware.security.keymint.Tag;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.ServiceManager;
 import android.os.SystemProperties;
 import android.os.VintfObject;
+import android.security.KeyStore2;
+import android.security.KeyStoreException;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Log;
@@ -39,6 +42,8 @@ public final class AttestationUtils {
 
     private static volatile byte[] sBootKey;
     private static volatile byte[] sBootHash;
+    // Empty array means the query failed or returned nothing. Null means uncached.
+    private static volatile byte[] sModuleHash;
     private static volatile boolean sTeeBroken = false;
     // True while the cached boot key/hash was derived from the keybox, so it must be
     // re-derived when the keybox changes. Persisted random values are not affected.
@@ -48,6 +53,44 @@ public final class AttestationUtils {
     private static volatile int sKeyMintAidlVersion;
 
     private AttestationUtils() {}
+
+    /**
+     * SHA-256 of Keystore's MODULE_HASH supplementary data. Null when KeyMint
+     * did not return it, so older attestations omit tag 724 instead of
+     * inventing a digest.
+     */
+    public static byte[] getModuleHash() {
+        byte[] cached = sModuleHash;
+        if (cached != null) {
+            return cached.length == 0 ? null : cached;
+        }
+        synchronized (AttestationUtils.class) {
+            cached = sModuleHash;
+            if (cached != null) {
+                return cached.length == 0 ? null : cached;
+            }
+            try {
+                byte[] modulesDer = KeyStore2.getInstance()
+                        .getSupplementaryAttestationInfo(Tag.MODULE_HASH);
+                if (modulesDer == null || modulesDer.length == 0) {
+                    Log.w(TAG, "MODULE_HASH supplementary data unavailable");
+                    sModuleHash = new byte[0];
+                    return null;
+                }
+                cached = MessageDigest.getInstance("SHA-256").digest(modulesDer);
+                sModuleHash = cached;
+                return cached;
+            } catch (KeyStoreException | java.security.NoSuchAlgorithmException e) {
+                Log.w(TAG, "Unable to calculate MODULE_HASH from Keystore2", e);
+                sModuleHash = new byte[0];
+                return null;
+            } catch (RuntimeException e) {
+                Log.w(TAG, "MODULE_HASH query failed", e);
+                sModuleHash = new byte[0];
+                return null;
+            }
+        }
+    }
 
     public static void setTeeBroken(boolean broken) {
         sTeeBroken = broken;
