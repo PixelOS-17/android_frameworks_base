@@ -57,19 +57,34 @@ public final class AttestationUtils {
         if (sBootHashFallback) sBootHash = null;
     }
 
+    /** True for a missing key and for the all-zero digest an unlocked bootloader publishes. */
+    public static boolean isNullOrZeroBootKey(byte[] key) {
+        if (key == null) return true;
+        for (byte value : key) {
+            if (value != 0) return false;
+        }
+        return true;
+    }
+
     public static byte[] getBootKey() {
         byte[] key = sBootKey;
-        if (key != null) return key;
+        if (!isNullOrZeroBootKey(key)) return key;
         synchronized (AttestationUtils.class) {
             key = sBootKey;
-            if (key == null) {
+            if (isNullOrZeroBootKey(key)) {
                 key = getBootKeyFromProp();
                 boolean fromKeybox = false;
-                if (key == null) {
+                if (isNullOrZeroBootKey(key)) {
                     key = getBootKeyFromKeybox();
-                    fromKeybox = key != null;
+                    fromKeybox = !isNullOrZeroBootKey(key);
                 }
-                if (key == null) key = loadOrCreatePersisted(BOOT_KEY_FILE);
+                if (isNullOrZeroBootKey(key)) key = loadOrCreatePersisted(BOOT_KEY_FILE);
+                // A previously persisted all-zero value is the same missing key.
+                if (isNullOrZeroBootKey(key)) {
+                    Log.w(TAG, "No boot key from prop or keybox, using random bytes");
+                    key = generateRandomBytes(32);
+                    writePersisted(BOOT_KEY_FILE, key);
+                }
                 sBootKeyFallback = fromKeybox;
                 sBootKey = key;
             }
