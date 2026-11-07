@@ -729,8 +729,9 @@ public class TrickyStoreService {
             if (XPOSED_PACKAGES.contains(pkg)) continue;
             Mode mode = mPackageModes.get(pkg);
             if (mode == Mode.SKIP) continue;
-            if (mode == Mode.GENERATE) return true;
-            if (mode == Mode.AUTO && isTeeBroken()) return true;
+            // Without a keybox the software leaf would chain to nothing.
+            if (mode == Mode.GENERATE) return hasKeyboxes();
+            if (mode == Mode.AUTO && hasKeyboxes() && isTeeBroken()) return true;
         }
         return false;
     }
@@ -818,6 +819,7 @@ public class TrickyStoreService {
     }
 
     public boolean hasKeyboxes() {
+        maybeRefreshKeyBox();
         return mKeyBoxManager.hasKeyboxes();
     }
 
