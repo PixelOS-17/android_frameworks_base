@@ -906,6 +906,11 @@ public class SpoofManager {
             if (target == null || target.equals(current)) {
                 continue;
             }
+            // Setting an existing override crashes init (bionic's Update() looks
+            // it up by the prefixed name), so it only changes on the next boot.
+            if (android.os.SystemProperties.find(APPCOMPAT_OVERRIDE_PREFIX + name) != null) {
+                continue;
+            }
             try {
                 android.os.SystemProperties.set(APPCOMPAT_OVERRIDE_PREFIX + name, target);
             } catch (Exception e) {
